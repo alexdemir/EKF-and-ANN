@@ -1,0 +1,1 @@
+/home/alexnew/bumperbot_ws/build/bumperbot_msgs/ament_cmake_export_libraries/ament_cmake_export_libraries-extras.cmake

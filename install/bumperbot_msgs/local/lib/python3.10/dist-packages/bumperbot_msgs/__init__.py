@@ -1,0 +1,1 @@
+/home/alexnew/bumperbot_ws/build/bumperbot_msgs/rosidl_generator_py/bumperbot_msgs/__init__.py

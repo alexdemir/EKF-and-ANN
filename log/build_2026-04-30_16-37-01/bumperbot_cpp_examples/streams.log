@@ -1,0 +1,44 @@
+[0.022s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples': CMAKE_PREFIX_PATH=/home/alexnew/bumperbot_ws/install/bumperbot_msgs:/home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples:/home/alexnew/bumperbot_ws/install/bumperbot_localization:/home/alexnew/bumperbot_ws/install/bumperbot_description:/home/alexnew/bumperbot_ws/install/bumperbot_controller:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples -- -j4 -l4
+[0.084s] [35m[1mConsolidate compiler generated dependencies of target simple_publisher[0m
+[0.090s] [35m[1mConsolidate compiler generated dependencies of target simple_subscriber[0m
+[0.100s] [35m[1mConsolidate compiler generated dependencies of target simple_turtlesim_kinematics[0m
+[0.105s] [35m[1mConsolidate compiler generated dependencies of target simple_parameter[0m
+[0.117s] [ 14%] Built target simple_publisher
+[0.130s] [ 28%] Built target simple_subscriber
+[0.135s] [35m[1mConsolidate compiler generated dependencies of target simple_service_server[0m
+[0.138s] [ 42%] Built target simple_turtlesim_kinematics
+[0.141s] [ 57%] Built target simple_parameter
+[0.150s] [35m[1mConsolidate compiler generated dependencies of target simple_service_client[0m
+[0.155s] [ 71%] Built target simple_service_server
+[0.156s] [35m[1mConsolidate compiler generated dependencies of target simple_tf_kinematics[0m
+[0.184s] [ 85%] Built target simple_tf_kinematics
+[0.192s] [100%] Built target simple_service_client
+[0.349s] Invoked command in '/home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples' returned '0': CMAKE_PREFIX_PATH=/home/alexnew/bumperbot_ws/install/bumperbot_msgs:/home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples:/home/alexnew/bumperbot_ws/install/bumperbot_localization:/home/alexnew/bumperbot_ws/install/bumperbot_description:/home/alexnew/bumperbot_ws/install/bumperbot_controller:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples -- -j4 -l4
+[0.354s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples': CMAKE_PREFIX_PATH=/home/alexnew/bumperbot_ws/install/bumperbot_msgs:/home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples:/home/alexnew/bumperbot_ws/install/bumperbot_localization:/home/alexnew/bumperbot_ws/install/bumperbot_description:/home/alexnew/bumperbot_ws/install/bumperbot_controller:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --install /home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples
+[0.356s] -- Install configuration: ""
+[0.357s] -- Execute custom install script
+[0.357s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/include/include/bumperbot_cpp_examples/simple_tf_kinematics.hpp
+[0.357s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/include/include/bumperbot_cpp_examples/simple_turtlesim_kinematics.hpp
+[0.358s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_publisher
+[0.359s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_subscriber
+[0.359s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_parameter
+[0.359s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_turtlesim_kinematics
+[0.360s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_service_server
+[0.361s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_service_client
+[0.362s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_tf_kinematics
+[0.362s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/ament_index/resource_index/package_run_dependencies/bumperbot_cpp_examples
+[0.362s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/ament_index/resource_index/parent_prefix_path/bumperbot_cpp_examples
+[0.364s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/environment/ament_prefix_path.sh
+[0.364s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/environment/ament_prefix_path.dsv
+[0.364s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/environment/path.sh
+[0.364s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/environment/path.dsv
+[0.364s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/local_setup.bash
+[0.364s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/local_setup.sh
+[0.364s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/local_setup.zsh
+[0.364s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/local_setup.dsv
+[0.364s] -- Symlinking: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/package.dsv
+[0.378s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/ament_index/resource_index/packages/bumperbot_cpp_examples
+[0.380s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/cmake/bumperbot_cpp_examplesConfig.cmake
+[0.380s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/cmake/bumperbot_cpp_examplesConfig-version.cmake
+[0.381s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/package.xml
+[0.386s] Invoked command in '/home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples' returned '0': CMAKE_PREFIX_PATH=/home/alexnew/bumperbot_ws/install/bumperbot_msgs:/home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples:/home/alexnew/bumperbot_ws/install/bumperbot_localization:/home/alexnew/bumperbot_ws/install/bumperbot_description:/home/alexnew/bumperbot_ws/install/bumperbot_controller:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --install /home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples

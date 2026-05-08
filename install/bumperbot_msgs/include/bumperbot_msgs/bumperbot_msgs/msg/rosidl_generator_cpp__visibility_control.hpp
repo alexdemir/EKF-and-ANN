@@ -1,0 +1,1 @@
+/home/alexnew/bumperbot_ws/build/bumperbot_msgs/rosidl_generator_cpp/bumperbot_msgs/msg/rosidl_generator_cpp__visibility_control.hpp

@@ -1,0 +1,25 @@
+[0.239s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_controller': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_controller -- -j4 -l4
+[1.528s] [ 50%] Built target simple_controller
+[1.743s] [100%] Built target noisy_controller
+[1.744s] [100%] Built target ament_cmake_python_symlink_bumperbot_controller
+[2.368s] Traceback (most recent call last):
+[2.434s]   File "/home/alexnew/bumperbot_ws/build/bumperbot_controller/ament_cmake_python/bumperbot_controller/setup.py", line 1, in <module>
+[2.436s]     from setuptools import find_packages
+[2.436s]   File "/usr/lib/python3/dist-packages/setuptools/__init__.py", line 10, in <module>
+[2.437s]     import distutils.core
+[2.437s]   File "/usr/lib/python3.10/distutils/core.py", line 16, in <module>
+[2.467s]     from distutils.dist import Distribution
+[2.467s]   File "/usr/lib/python3.10/distutils/dist.py", line 18, in <module>
+[2.467s]     from distutils.fancy_getopt import FancyGetopt, translate_longopt
+[2.467s]   File "/usr/lib/python3.10/distutils/fancy_getopt.py", line 20, in <module>
+[2.467s]     longopt_re = re.compile(r'^%s$' % longopt_pat)
+[2.467s]   File "/usr/lib/python3.10/re.py", line 251, in compile
+[2.467s]     return _compile(pattern, flags)
+[2.467s]   File "/usr/lib/python3.10/re.py", line 303, in _compile
+[2.467s]     p = sre_compile.compile(pattern, flags)
+[2.467s]   File "/usr/lib/python3.10/sre_compile.py", line 801, in compile
+[2.467s]     for k, i in groupindex.items():
+[2.467s] KeyboardInterrupt
+[2.468s] gmake[2]: *** [CMakeFiles/ament_cmake_python_build_bumperbot_controller_egg.dir/build.make:70: CMakeFiles/ament_cmake_python_build_bumperbot_controller_egg] Interrupt
+[2.468s] gmake[1]: *** [CMakeFiles/Makefile2:220: CMakeFiles/ament_cmake_python_build_bumperbot_controller_egg.dir/all] Interrupt
+[2.468s] gmake: *** [Makefile:146: all] Interrupt

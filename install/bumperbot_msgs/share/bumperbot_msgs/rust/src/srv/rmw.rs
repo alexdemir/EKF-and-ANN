@@ -1,0 +1,1 @@
+/home/alexnew/bumperbot_ws/build/bumperbot_msgs/rosidl_generator_rs/bumperbot_msgs/rust/src/srv/rmw.rs

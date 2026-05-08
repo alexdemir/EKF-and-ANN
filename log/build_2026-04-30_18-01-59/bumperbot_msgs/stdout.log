@@ -1,0 +1,5 @@
+[  2%] Built target bumperbot_msgs__cpp
+[  2%] Built target ament_cmake_python_symlink_bumperbot_msgs
+[  5%] Built target bumperbot_msgs__rs
+[ 15%] Built target bumperbot_msgs__rosidl_generator_c
+[ 25%] Built target bumperbot_msgs__rosidl_typesupport_cpp

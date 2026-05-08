@@ -1,0 +1,38 @@
+[1.199s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_py_examples': CMAKE_PREFIX_PATH=/home/alexnew/bumperbot_ws/install/bumperbot_msgs:/home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples:/home/alexnew/bumperbot_ws/install/bumperbot_localization:/home/alexnew/bumperbot_ws/install/bumperbot_description:/home/alexnew/bumperbot_ws/install/bumperbot_controller PYTHONPATH=/home/alexnew/bumperbot_ws/build/bumperbot_py_examples/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/alexnew/bumperbot_ws/build/bumperbot_py_examples/build --no-deps symlink_data
+[1.282s] Traceback (most recent call last):
+[1.282s]   File "/home/alexnew/bumperbot_ws/build/bumperbot_py_examples/setup.py", line 1, in <module>
+[1.282s]     from setuptools import setup
+[1.283s]   File "/usr/lib/python3/dist-packages/setuptools/__init__.py", line 16, in <module>
+[1.283s]     import setuptools.version
+[1.283s]   File "/usr/lib/python3/dist-packages/setuptools/version.py", line 1, in <module>
+[1.283s]     import pkg_resources
+[1.283s]   File "/usr/lib/python3/dist-packages/pkg_resources/__init__.py", line 78, in <module>
+[1.283s]     __import__('pkg_resources.extern.packaging.requirements')
+[1.283s]   File "/usr/lib/python3/dist-packages/pkg_resources/_vendor/packaging/requirements.py", line 56, in <module>
+[1.283s]     VERSION_PEP440 = Regex(Specifier._regex_str, re.VERBOSE | re.IGNORECASE)
+[1.284s]   File "/usr/lib/python3/dist-packages/pkg_resources/_vendor/pyparsing.py", line 2792, in __init__
+[1.284s]     self.re = re.compile(self.pattern, self.flags)
+[1.284s]   File "/usr/lib/python3.10/re.py", line 251, in compile
+[1.285s]     return _compile(pattern, flags)
+[1.285s]   File "/usr/lib/python3.10/re.py", line 303, in _compile
+[1.285s]     p = sre_compile.compile(pattern, flags)
+[1.285s]   File "/usr/lib/python3.10/sre_compile.py", line 788, in compile
+[1.286s]     p = sre_parse.parse(p, flags)
+[1.286s]   File "/usr/lib/python3.10/sre_parse.py", line 955, in parse
+[1.291s]     p = _parse_sub(source, state, flags & SRE_FLAG_VERBOSE, 0)
+[1.291s]   File "/usr/lib/python3.10/sre_parse.py", line 444, in _parse_sub
+[1.291s]     itemsappend(_parse(source, state, verbose, nested + 1,
+[1.291s]   File "/usr/lib/python3.10/sre_parse.py", line 841, in _parse
+[1.291s]     p = _parse_sub(source, state, sub_verbose, nested + 1)
+[1.291s]   File "/usr/lib/python3.10/sre_parse.py", line 444, in _parse_sub
+[1.291s]     itemsappend(_parse(source, state, verbose, nested + 1,
+[1.291s]   File "/usr/lib/python3.10/sre_parse.py", line 841, in _parse
+[1.291s]     p = _parse_sub(source, state, sub_verbose, nested + 1)
+[1.291s]   File "/usr/lib/python3.10/sre_parse.py", line 444, in _parse_sub
+[1.292s]     itemsappend(_parse(source, state, verbose, nested + 1,
+[1.292s]   File "/usr/lib/python3.10/sre_parse.py", line 860, in _parse
+[1.292s]     op, av = subpattern[i]
+[1.292s]   File "/usr/lib/python3.10/sre_parse.py", line 165, in __getitem__
+[1.292s]     def __getitem__(self, index):
+[1.292s] KeyboardInterrupt
+[1.301s] Invoked command in '/home/alexnew/bumperbot_ws/build/bumperbot_py_examples' returned '-2': CMAKE_PREFIX_PATH=/home/alexnew/bumperbot_ws/install/bumperbot_msgs:/home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples:/home/alexnew/bumperbot_ws/install/bumperbot_localization:/home/alexnew/bumperbot_ws/install/bumperbot_description:/home/alexnew/bumperbot_ws/install/bumperbot_controller PYTHONPATH=/home/alexnew/bumperbot_ws/build/bumperbot_py_examples/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/alexnew/bumperbot_ws/build/bumperbot_py_examples/build --no-deps symlink_data

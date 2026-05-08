@@ -1,0 +1,1 @@
+ament_cmake_symlink_install_targets("TARGET_FILES" "/home/alexnew/bumperbot_ws/build/bumperbot_localization/kalman_filter" "/home/alexnew/bumperbot_ws/build/bumperbot_localization/imu_republisher" "TARGETS" "kalman_filter" "imu_republisher" "DESTINATION" "lib/bumperbot_localization")

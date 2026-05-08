@@ -1,0 +1,37 @@
+[0.030s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples': CMAKE_PREFIX_PATH=/home/alexnew/bumperbot_ws/install/bumperbot_msgs:/home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples:/home/alexnew/bumperbot_ws/install/bumperbot_localization:/home/alexnew/bumperbot_ws/install/bumperbot_description:/home/alexnew/bumperbot_ws/install/bumperbot_controller:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples -- -j4 -l4
+[0.113s] [ 14%] Built target simple_turtlesim_kinematics
+[0.113s] [ 28%] Built target simple_parameter
+[0.118s] [ 42%] Built target simple_publisher
+[0.118s] [ 57%] Built target simple_subscriber
+[0.149s] [ 71%] Built target simple_service_server
+[0.155s] [ 85%] Built target simple_service_client
+[0.161s] [100%] Built target simple_tf_kinematics
+[0.275s] Invoked command in '/home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples' returned '0': CMAKE_PREFIX_PATH=/home/alexnew/bumperbot_ws/install/bumperbot_msgs:/home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples:/home/alexnew/bumperbot_ws/install/bumperbot_localization:/home/alexnew/bumperbot_ws/install/bumperbot_description:/home/alexnew/bumperbot_ws/install/bumperbot_controller:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples -- -j4 -l4
+[0.278s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples': CMAKE_PREFIX_PATH=/home/alexnew/bumperbot_ws/install/bumperbot_msgs:/home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples:/home/alexnew/bumperbot_ws/install/bumperbot_localization:/home/alexnew/bumperbot_ws/install/bumperbot_description:/home/alexnew/bumperbot_ws/install/bumperbot_controller:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --install /home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples
+[0.287s] -- Install configuration: ""
+[0.288s] -- Execute custom install script
+[0.289s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/include/include/bumperbot_cpp_examples/simple_tf_kinematics.hpp
+[0.289s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/include/include/bumperbot_cpp_examples/simple_turtlesim_kinematics.hpp
+[0.289s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_publisher
+[0.289s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_subscriber
+[0.289s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_parameter
+[0.289s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_turtlesim_kinematics
+[0.290s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_service_server
+[0.290s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_service_client
+[0.290s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/lib/bumperbot_cpp_examples/simple_tf_kinematics
+[0.290s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/ament_index/resource_index/package_run_dependencies/bumperbot_cpp_examples
+[0.290s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/ament_index/resource_index/parent_prefix_path/bumperbot_cpp_examples
+[0.290s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/environment/ament_prefix_path.sh
+[0.291s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/environment/ament_prefix_path.dsv
+[0.291s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/environment/path.sh
+[0.291s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/environment/path.dsv
+[0.291s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/local_setup.bash
+[0.291s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/local_setup.sh
+[0.293s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/local_setup.zsh
+[0.293s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/local_setup.dsv
+[0.293s] -- Symlinking: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/package.dsv
+[0.302s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/ament_index/resource_index/packages/bumperbot_cpp_examples
+[0.302s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/cmake/bumperbot_cpp_examplesConfig.cmake
+[0.302s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/cmake/bumperbot_cpp_examplesConfig-version.cmake
+[0.303s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples/share/bumperbot_cpp_examples/package.xml
+[0.304s] Invoked command in '/home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples' returned '0': CMAKE_PREFIX_PATH=/home/alexnew/bumperbot_ws/install/bumperbot_msgs:/home/alexnew/bumperbot_ws/install/bumperbot_cpp_examples:/home/alexnew/bumperbot_ws/install/bumperbot_localization:/home/alexnew/bumperbot_ws/install/bumperbot_description:/home/alexnew/bumperbot_ws/install/bumperbot_controller:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --install /home/alexnew/bumperbot_ws/build/bumperbot_cpp_examples

@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "bumperbot_msgs__rs",
+		"source" : "/home/alexnew/bumperbot_ws/build/bumperbot_msgs/bumperbot_msgs__rs"
+	}
+}
