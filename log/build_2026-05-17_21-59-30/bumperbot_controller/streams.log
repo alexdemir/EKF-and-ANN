@@ -1,0 +1,52 @@
+[0.031s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_controller': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_controller -- -j4 -l4
+[0.115s] [ 75%] Built target noisy_controller
+[0.117s] [100%] Built target simple_controller
+[0.127s] [100%] Built target ament_cmake_python_symlink_bumperbot_controller
+[0.346s] running egg_info
+[0.346s] writing bumperbot_controller.egg-info/PKG-INFO
+[0.346s] writing dependency_links to bumperbot_controller.egg-info/dependency_links.txt
+[0.346s] writing top-level names to bumperbot_controller.egg-info/top_level.txt
+[0.349s] reading manifest file 'bumperbot_controller.egg-info/SOURCES.txt'
+[0.351s] writing manifest file 'bumperbot_controller.egg-info/SOURCES.txt'
+[0.410s] [100%] Built target ament_cmake_python_build_bumperbot_controller_egg
+[0.445s] Invoked command in '/home/alexnew/bumperbot_ws/build/bumperbot_controller' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_controller -- -j4 -l4
+[0.446s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_controller': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --install /home/alexnew/bumperbot_ws/build/bumperbot_controller
+[0.456s] -- Install configuration: ""
+[0.459s] -- Execute custom install script
+[0.459s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/environment/pythonpath.sh
+[0.459s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/environment/pythonpath.dsv
+[0.459s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/local/lib/python3.10/dist-packages/bumperbot_controller-0.0.0-py3.10.egg-info/PKG-INFO
+[0.459s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/local/lib/python3.10/dist-packages/bumperbot_controller-0.0.0-py3.10.egg-info/SOURCES.txt
+[0.459s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/local/lib/python3.10/dist-packages/bumperbot_controller-0.0.0-py3.10.egg-info/dependency_links.txt
+[0.459s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/local/lib/python3.10/dist-packages/bumperbot_controller-0.0.0-py3.10.egg-info/top_level.txt
+[0.460s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/local/lib/python3.10/dist-packages/bumperbot_controller/__init__.py
+[0.460s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/local/lib/python3.10/dist-packages/bumperbot_controller/noisy_controller.py
+[0.460s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/local/lib/python3.10/dist-packages/bumperbot_controller/simple_controller.py
+[0.460s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/include/include/bumperbot_controller/noisy_controller.hpp
+[0.461s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/include/include/bumperbot_controller/simple_controller.hpp
+[0.462s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/lib/bumperbot_controller/simple_controller
+[0.462s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/lib/bumperbot_controller/noisy_controller
+[0.462s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/launch/controller.launch.py
+[0.462s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/launch/joystick_teleop.launch.py
+[0.462s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/config/bumperbot_controllers.yaml
+[0.462s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/config/joy_config.yaml
+[0.462s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/config/joy_teleop.yaml
+[0.462s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/lib/bumperbot_controller/simple_controller.py
+[0.462s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/lib/bumperbot_controller/noisy_controller.py
+[0.463s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/ament_index/resource_index/package_run_dependencies/bumperbot_controller
+[0.463s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/ament_index/resource_index/parent_prefix_path/bumperbot_controller
+[0.463s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/environment/ament_prefix_path.sh
+[0.463s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/environment/ament_prefix_path.dsv
+[0.463s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/environment/path.sh
+[0.463s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/environment/path.dsv
+[0.463s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/local_setup.bash
+[0.463s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/local_setup.sh
+[0.463s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/local_setup.zsh
+[0.466s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/local_setup.dsv
+[0.466s] -- Symlinking: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/package.dsv
+[0.482s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/ament_index/resource_index/packages/bumperbot_controller
+[0.482s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/cmake/bumperbot_controllerConfig.cmake
+[0.482s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/cmake/bumperbot_controllerConfig-version.cmake
+[0.482s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_controller/share/bumperbot_controller/package.xml
+[0.524s] Listing '/home/alexnew/bumperbot_ws/install/bumperbot_controller/local/lib/python3.10/dist-packages/bumperbot_controller'...
+[0.556s] Invoked command in '/home/alexnew/bumperbot_ws/build/bumperbot_controller' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --install /home/alexnew/bumperbot_ws/build/bumperbot_controller

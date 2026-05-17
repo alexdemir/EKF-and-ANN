@@ -1,5 +1,9 @@
 setup.py
 bumperbot_localization/__init__.py
+bumperbot_localization/ann_pseudo_gps.py
+bumperbot_localization/ann_trainer.py
+bumperbot_localization/complementary_filter.py
+bumperbot_localization/ekf_output_logger.py
 bumperbot_localization/gps_odom_republisher.py
 bumperbot_localization/gps_republisher.py
 bumperbot_localization/imu_republisher.py

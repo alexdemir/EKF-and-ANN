@@ -1,0 +1,90 @@
+[0.030s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_localization': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_localization -- -j4 -l4
+[0.057s] -- Found ament_cmake: 1.3.14 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.213s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.214s] -- Found rclcpp: 16.0.19 (/opt/ros/humble/share/rclcpp/cmake)
+[0.246s] -- Found rosidl_generator_c: 3.1.8 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[0.248s] -- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[0.253s] -- Found rosidl_generator_cpp: 3.1.8 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[0.263s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.274s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.320s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[0.320s] -- Found rmw_fastrtps_cpp: 6.2.10 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[0.478s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[0.547s] -- Found rclpy: 3.3.21 (/opt/ros/humble/share/rclpy/cmake)
+[0.547s] -- Found nav_msgs: 4.9.1 (/opt/ros/humble/share/nav_msgs/cmake)
+[0.547s] -- Found sensor_msgs: 4.9.1 (/opt/ros/humble/share/sensor_msgs/cmake)
+[0.770s] -- Configuring done
+[0.789s] -- Generating done
+[0.800s] -- Build files have been written to: /home/alexnew/bumperbot_ws/build/bumperbot_localization
+[0.838s] [35m[1mConsolidate compiler generated dependencies of target imu_republisher[0m
+[0.838s] [35m[1mConsolidate compiler generated dependencies of target kalman_filter[0m
+[0.863s] [ 50%] Built target kalman_filter
+[0.866s] [100%] Built target imu_republisher
+[0.866s] [100%] Built target ament_cmake_python_symlink_bumperbot_localization
+[1.102s] running egg_info
+[1.103s] writing bumperbot_localization.egg-info/PKG-INFO
+[1.104s] writing dependency_links to bumperbot_localization.egg-info/dependency_links.txt
+[1.105s] writing top-level names to bumperbot_localization.egg-info/top_level.txt
+[1.107s] reading manifest file 'bumperbot_localization.egg-info/SOURCES.txt'
+[1.108s] writing manifest file 'bumperbot_localization.egg-info/SOURCES.txt'
+[1.142s] [100%] Built target ament_cmake_python_build_bumperbot_localization_egg
+[1.160s] Invoked command in '/home/alexnew/bumperbot_ws/build/bumperbot_localization' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_localization -- -j4 -l4
+[1.163s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_localization': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --install /home/alexnew/bumperbot_ws/build/bumperbot_localization
+[1.178s] -- Install configuration: ""
+[1.179s] -- Execute custom install script
+[1.179s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/environment/pythonpath.sh
+[1.180s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/environment/pythonpath.dsv
+[1.180s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization-0.0.0-py3.10.egg-info/PKG-INFO
+[1.180s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization-0.0.0-py3.10.egg-info/SOURCES.txt
+[1.180s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization-0.0.0-py3.10.egg-info/dependency_links.txt
+[1.180s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization-0.0.0-py3.10.egg-info/top_level.txt
+[1.180s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/__init__.py
+[1.181s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/ann_pseudo_gps.py
+[1.181s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/ann_trainer.py
+[1.181s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/complementary_filter.py
+[1.181s] -- Symlinking: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/ekf_output_logger.py
+[1.193s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/gps_odom_republisher.py
+[1.193s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/gps_republisher.py
+[1.193s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/imu_republisher.py
+[1.193s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/imu_sim_republisher.py
+[1.193s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/kalman_filter.py
+[1.193s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/include/include/bumperbot_localization/kalman_filter.hpp
+[1.194s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/kalman_filter
+[1.194s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/imu_republisher
+[1.194s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/launch/local_localization.launch.py
+[1.194s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/ann_pseudo_gps.yaml
+[1.194s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/ann_trainer.yaml
+[1.195s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/complementary_filter.yaml
+[1.195s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/ekf.yaml
+[1.195s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/ekf_global.yaml
+[1.195s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/ekf_gps_imu.yaml
+[1.195s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/ekf_gps_odom.yaml
+[1.195s] -- Symlinking: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/ekf_output_logger.yaml
+[1.208s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/navsat_transform.yaml
+[1.208s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/kalman_filter.py
+[1.209s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/imu_republisher.py
+[1.209s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/gps_republisher.py
+[1.209s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/gps_odom_republisher.py
+[1.209s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/imu_sim_republisher.py
+[1.209s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/complementary_filter.py
+[1.209s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/ann_trainer.py
+[1.209s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/ann_pseudo_gps.py
+[1.209s] -- Symlinking: /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/ekf_output_logger.py
+[1.223s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/ament_index/resource_index/package_run_dependencies/bumperbot_localization
+[1.223s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/ament_index/resource_index/parent_prefix_path/bumperbot_localization
+[1.223s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/environment/ament_prefix_path.sh
+[1.224s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/environment/ament_prefix_path.dsv
+[1.224s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/environment/path.sh
+[1.224s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/environment/path.dsv
+[1.224s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/local_setup.bash
+[1.224s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/local_setup.sh
+[1.224s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/local_setup.zsh
+[1.224s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/local_setup.dsv
+[1.226s] -- Symlinking: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/package.dsv
+[1.245s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/ament_index/resource_index/packages/bumperbot_localization
+[1.246s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/cmake/bumperbot_localizationConfig.cmake
+[1.246s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/cmake/bumperbot_localizationConfig-version.cmake
+[1.247s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/package.xml
+[1.285s] Listing '/home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization'...
+[1.285s] Compiling '/home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/ekf_output_logger.py'...
+[1.297s] Invoked command in '/home/alexnew/bumperbot_ws/build/bumperbot_localization' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --install /home/alexnew/bumperbot_ws/build/bumperbot_localization

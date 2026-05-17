@@ -4,6 +4,7 @@ from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import Command, LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
@@ -20,6 +21,11 @@ def generate_launch_description():
             bumperbot_description, "urdf", "bumperbot.urdf.xacro"
         ),
         description="Absolute path to robot urdf file"
+    )
+    headless_arg = DeclareLaunchArgument(
+        name="headless",
+        default_value="true",
+        description="Run Gazebo server without the GUI. Use headless:=false to open the Gazebo window."
     )
 
     gazebo_resource_path = SetEnvironmentVariable(
@@ -55,7 +61,7 @@ def generate_launch_description():
         "bumperbot_gps.sdf"
     )
 
-    gazebo = IncludeLaunchDescription(
+    gazebo_headless = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             os.path.join(
                 get_package_share_directory("ros_gz_sim"),
@@ -64,8 +70,23 @@ def generate_launch_description():
             )
         ]),
         launch_arguments={
-            "gz_args": f"-v 4 -r {world_file}"
-        }.items()
+            "gz_args": f"-v 2 -r -s {world_file}"
+        }.items(),
+        condition=IfCondition(LaunchConfiguration("headless")),
+    )
+
+    gazebo_gui = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            os.path.join(
+                get_package_share_directory("ros_gz_sim"),
+                "launch",
+                "gz_sim.launch.py"
+            )
+        ]),
+        launch_arguments={
+            "gz_args": f"-v 2 -r {world_file}"
+        }.items(),
+        condition=UnlessCondition(LaunchConfiguration("headless")),
     )
 
     gz_spawn_entity = Node(
@@ -93,9 +114,11 @@ def generate_launch_description():
 
     return LaunchDescription([
         model_arg,
+        headless_arg,
         gazebo_resource_path,
         robot_state_publisher_node,
-        gazebo,
+        gazebo_headless,
+        gazebo_gui,
         gz_spawn_entity,
         gz_ros2_bridge
     ])

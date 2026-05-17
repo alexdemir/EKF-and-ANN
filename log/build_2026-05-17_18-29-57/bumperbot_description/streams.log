@@ -1,0 +1,34 @@
+[0.224s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_description -- -j4 -l4
+[0.871s] Invoked command in '/home/alexnew/bumperbot_ws/build/bumperbot_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_description -- -j4 -l4
+[1.107s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --install /home/alexnew/bumperbot_ws/build/bumperbot_description
+[1.292s] -- Install configuration: ""
+[1.292s] -- Execute custom install script
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/launch/display.launch.py
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/launch/gazebo.launch.py
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/meshes/base_link.STL
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/meshes/caster_front_link.STL
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/meshes/caster_rear_link.STL
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/meshes/imu_link.STL
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/meshes/wheel_left_link.STL
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/meshes/wheel_right_link.STL
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/urdf/bumperbot.urdf.xacro
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/urdf/bumperbot_gazebo.xacro
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/urdf/bumperbot_ros2_control.xacro
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/rviz/display.rviz
+[1.292s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/worlds/bumperbot_gps.sdf
+[1.299s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/ament_index/resource_index/package_run_dependencies/bumperbot_description
+[1.300s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/ament_index/resource_index/parent_prefix_path/bumperbot_description
+[1.300s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/environment/ament_prefix_path.sh
+[1.356s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/environment/ament_prefix_path.dsv
+[1.357s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/environment/path.sh
+[1.362s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/environment/path.dsv
+[1.362s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/local_setup.bash
+[1.439s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/local_setup.sh
+[1.439s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/local_setup.zsh
+[1.439s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/local_setup.dsv
+[1.439s] -- Symlinking: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/package.dsv
+[1.444s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/ament_index/resource_index/packages/bumperbot_description
+[1.444s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/cmake/bumperbot_descriptionConfig.cmake
+[1.445s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/cmake/bumperbot_descriptionConfig-version.cmake
+[1.446s] -- Up-to-date symlink: /home/alexnew/bumperbot_ws/install/bumperbot_description/share/bumperbot_description/package.xml
+[1.486s] Invoked command in '/home/alexnew/bumperbot_ws/build/bumperbot_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --install /home/alexnew/bumperbot_ws/build/bumperbot_description

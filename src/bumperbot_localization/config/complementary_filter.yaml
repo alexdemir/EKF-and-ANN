@@ -1,0 +1,9 @@
+complementary_filter_node:
+  ros__parameters:
+    use_sim_time: true
+    kf1_topic: /odometry/kf_gps_imu
+    kf2_topic: /odometry/kf_gps_odom
+    output_topic: /odometry/kf_complementary
+    alpha1: 0.5
+    alpha2: 0.5
+    publish_rate: 10.0

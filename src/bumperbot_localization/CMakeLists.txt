@@ -45,6 +45,10 @@ install(PROGRAMS
   ${PROJECT_NAME}/gps_republisher.py
   ${PROJECT_NAME}/gps_odom_republisher.py
   ${PROJECT_NAME}/imu_sim_republisher.py
+  ${PROJECT_NAME}/complementary_filter.py
+  ${PROJECT_NAME}/ann_trainer.py
+  ${PROJECT_NAME}/ann_pseudo_gps.py
+  ${PROJECT_NAME}/ekf_output_logger.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

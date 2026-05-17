@@ -1,0 +1,21 @@
+ann_pseudo_gps_node:
+  ros__parameters:
+    use_sim_time: true
+
+    odom_topic: /bumperbot_controller/odom_noisy
+    imu_topic: /imu_sim
+    gps_odom_topic: /odometry/gps_sim
+    output_topic: /odometry/gps_or_ann
+    ann_debug_topic: /odometry/ann
+
+    frequency: 20.0
+    gps_timeout: 0.5
+    force_gps_dropout_after_sec: -1.0
+    force_gps_dropout_duration_sec: 0.0
+
+    model_path: ~/bumperbot_ws/src/ann_model.npz
+    ann_position_variance: 0.25
+    fallback_position_variance: 4.0
+    min_model_samples: 125
+    save_log: true
+    log_path: ~/bumperbot_ws/src/ann_pseudo_gps_log.csv
