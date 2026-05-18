@@ -42,11 +42,11 @@ class NoisyController(Node):
         # Small distance error
         self.linear_bias_ = 1.01
 
-        # Larger heading/dead-reckoning error
-        self.angular_bias_ = 0.75
+        # Moderate heading/dead-reckoning error for repeatable ANN dropout tests.
+        self.angular_bias_ = 0.90
 
         # Small random yaw drift added at every update
-        self.yaw_random_walk_std_ = 0.0015
+        self.yaw_random_walk_std_ = 0.0008
 
         self.joint_sub_ = self.create_subscription(
             JointState, "joint_states", self.jointCallback, 10
