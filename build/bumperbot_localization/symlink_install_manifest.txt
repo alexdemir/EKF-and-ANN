@@ -9,6 +9,8 @@
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/ann_trainer.py
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/complementary_filter.py
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/ekf_output_logger.py
+/home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/fuzzy_localization.py
+/home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/gps_hold.py
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/gps_odom_republisher.py
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/gps_republisher.py
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/local/lib/python3.10/dist-packages/bumperbot_localization/imu_republisher.py
@@ -26,6 +28,8 @@
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/ekf_gps_imu.yaml
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/ekf_gps_odom.yaml
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/ekf_output_logger.yaml
+/home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/fuzzy_localization.yaml
+/home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/gps_hold.yaml
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/bumperbot_localization/config/navsat_transform.yaml
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/kalman_filter.py
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/imu_republisher.py
@@ -35,6 +39,8 @@
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/complementary_filter.py
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/ann_trainer.py
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/ann_pseudo_gps.py
+/home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/gps_hold.py
+/home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/fuzzy_localization.py
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/lib/bumperbot_localization/ekf_output_logger.py
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/ament_index/resource_index/package_run_dependencies/bumperbot_localization
 /home/alexnew/bumperbot_ws/install/bumperbot_localization/share/ament_index/resource_index/parent_prefix_path/bumperbot_localization

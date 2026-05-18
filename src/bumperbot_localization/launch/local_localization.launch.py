@@ -24,6 +24,8 @@ def generate_launch_description():
     complementary_filter_config = os.path.join(pkg_dir, "config", "complementary_filter.yaml")
     ann_trainer_config = os.path.join(pkg_dir, "config", "ann_trainer.yaml")
     ann_pseudo_gps_config = os.path.join(pkg_dir, "config", "ann_pseudo_gps.yaml")
+    gps_hold_config = os.path.join(pkg_dir, "config", "gps_hold.yaml")
+    fuzzy_localization_config = os.path.join(pkg_dir, "config", "fuzzy_localization.yaml")
     ekf_output_logger_config = os.path.join(pkg_dir, "config", "ekf_output_logger.yaml")
 
     imu_republisher = Node(
@@ -126,6 +128,34 @@ def generate_launch_description():
         condition=IfCondition(run_ann_pseudo),
     )
 
+    gps_hold = Node(
+        package="bumperbot_localization",
+        executable="gps_hold.py",
+        name="gps_hold_node",
+        output="screen",
+        parameters=[
+            gps_hold_config,
+            {
+                "force_gps_dropout_after_sec": ann_force_gps_dropout_after_sec,
+                "force_gps_dropout_duration_sec": ann_force_gps_dropout_duration_sec,
+            },
+            {"use_sim_time": True}
+        ],
+        condition=IfCondition(run_ann_pseudo),
+    )
+
+    fuzzy_localization = Node(
+        package="bumperbot_localization",
+        executable="fuzzy_localization.py",
+        name="fuzzy_localization_node",
+        output="screen",
+        parameters=[
+            fuzzy_localization_config,
+            {"use_sim_time": True}
+        ],
+        condition=IfCondition(run_ann_pseudo),
+    )
+
     ekf_output_logger = Node(
         package="bumperbot_localization",
         executable="ekf_output_logger.py",
@@ -203,11 +233,13 @@ def generate_launch_description():
         imu_republisher,
         ekf_local,
         gps_odom_republisher,
+        gps_hold,
         ekf_gps_imu,
         ekf_gps_odom,
         complementary_filter,
         ann_trainer,
         ann_pseudo_gps,
+        fuzzy_localization,
         ekf_output_logger,
         ekf_global,
         #gps_republisher,

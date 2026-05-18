@@ -1,0 +1,13 @@
+gps_hold_node:
+  ros__parameters:
+    use_sim_time: true
+    gps_topic: /odometry/gps_sim
+    output_topic: /odometry/gps_hold
+    frequency: 20.0
+    gps_timeout: 0.5
+    force_gps_dropout_after_sec: 15.0
+    force_gps_dropout_duration_sec: 0.0
+    hold_position_variance: 4.0
+    publish_hold_once: true
+    save_log: true
+    log_path: ~/bumperbot_ws/src/gps_hold_log.csv

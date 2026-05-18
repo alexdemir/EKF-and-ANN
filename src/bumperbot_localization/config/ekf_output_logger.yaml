@@ -9,5 +9,6 @@ ekf_output_logger_node:
     ann_topic: /odometry/ann
     kf_imu_topic: /odometry/kf_gps_imu
     complementary_topic: /odometry/kf_complementary
+    final_topic: /odometry/fuzzy_localization
 
     log_path: ~/bumperbot_ws/src/ekf_output_log.csv

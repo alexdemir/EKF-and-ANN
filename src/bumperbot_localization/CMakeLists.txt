@@ -48,6 +48,8 @@ install(PROGRAMS
   ${PROJECT_NAME}/complementary_filter.py
   ${PROJECT_NAME}/ann_trainer.py
   ${PROJECT_NAME}/ann_pseudo_gps.py
+  ${PROJECT_NAME}/gps_hold.py
+  ${PROJECT_NAME}/fuzzy_localization.py
   ${PROJECT_NAME}/ekf_output_logger.py
   DESTINATION lib/${PROJECT_NAME}
 )

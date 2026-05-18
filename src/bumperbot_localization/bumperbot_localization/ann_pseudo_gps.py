@@ -80,6 +80,12 @@ class AnnPseudoGps(Node):
         self.declare_parameter("ann_position_variance", 0.25)
         self.declare_parameter("fallback_position_variance", 4.0)
         self.declare_parameter("min_model_samples", 125)
+        self.declare_parameter("fuzzy_fusion_enabled", True)
+        self.declare_parameter("fuzzy_small_error", 0.10)
+        self.declare_parameter("fuzzy_large_error", 0.60)
+        self.declare_parameter("fuzzy_ann_weight_zero", 0.35)
+        self.declare_parameter("fuzzy_ann_weight_small", 0.55)
+        self.declare_parameter("fuzzy_ann_weight_large", 0.85)
         self.declare_parameter("save_log", True)
         self.declare_parameter("log_path", "~/bumperbot_ws/src/ann_pseudo_gps_log.csv")
 
@@ -100,6 +106,12 @@ class AnnPseudoGps(Node):
         self.ann_position_variance = float(self.get_parameter("ann_position_variance").value)
         self.fallback_position_variance = float(self.get_parameter("fallback_position_variance").value)
         self.min_model_samples = int(self.get_parameter("min_model_samples").value)
+        self.fuzzy_fusion_enabled = bool(self.get_parameter("fuzzy_fusion_enabled").value)
+        self.fuzzy_small_error = float(self.get_parameter("fuzzy_small_error").value)
+        self.fuzzy_large_error = float(self.get_parameter("fuzzy_large_error").value)
+        self.fuzzy_ann_weight_zero = float(self.get_parameter("fuzzy_ann_weight_zero").value)
+        self.fuzzy_ann_weight_small = float(self.get_parameter("fuzzy_ann_weight_small").value)
+        self.fuzzy_ann_weight_large = float(self.get_parameter("fuzzy_ann_weight_large").value)
         self.save_log = bool(self.get_parameter("save_log").value)
         self.log_path = os.path.expanduser(str(self.get_parameter("log_path").value))
 
@@ -141,7 +153,8 @@ class AnnPseudoGps(Node):
             "ANN pseudo GPS node started: loading saved residual ANN model for GPS "
             f"dropout, gps_timeout={self.gps_timeout:.3f}s, "
             f"force_after={self.force_gps_dropout_after_sec:.3f}s, "
-            f"force_duration={self.force_gps_dropout_duration_sec:.3f}s"
+            f"force_duration={self.force_gps_dropout_duration_sec:.3f}s, "
+            f"fuzzy_fusion={self.fuzzy_fusion_enabled}"
         )
 
     def imu_callback(self, msg):
@@ -235,15 +248,31 @@ class AnnPseudoGps(Node):
             return
 
         ann_xy = self.predict_ann_position()
+        output_xy, alpha_ann, alpha_odom, velocity_error = self.apply_fuzzy_fusion(ann_xy)
         ann_msg = self.make_position_msg(
             self.latest_odom,
             ann_xy[0],
             ann_xy[1],
             self.ann_position_variance,
         )
+        output_msg = self.make_position_msg(
+            self.latest_odom,
+            output_xy[0],
+            output_xy[1],
+            self.ann_position_variance,
+        )
         self.ann_pub.publish(ann_msg)
-        self.output_pub.publish(ann_msg)
-        self.write_log_row("ann", gps_available, ann_xy, ann_xy)
+        self.output_pub.publish(output_msg)
+        source = "fuzzy_ann_odom" if self.fuzzy_fusion_enabled else "ann"
+        self.write_log_row(
+            source,
+            gps_available,
+            ann_xy,
+            output_xy,
+            alpha_ann,
+            alpha_odom,
+            velocity_error,
+        )
 
     def publish_ann_debug(self):
         if not self.model_ready():
@@ -305,6 +334,9 @@ class AnnPseudoGps(Node):
                 "origin_source",
                 "origin_x",
                 "origin_y",
+                "fuzzy_alpha_ann",
+                "fuzzy_alpha_odom",
+                "fuzzy_velocity_error",
             ])
             self.log_file.flush()
             self.get_logger().info(f"ANN pseudo GPS logging enabled: {self.log_path}")
@@ -314,7 +346,16 @@ class AnnPseudoGps(Node):
             self.save_log = False
             self.get_logger().error(f"Could not open ANN pseudo GPS log file: {exc}")
 
-    def write_log_row(self, source, gps_available, ann_xy, output_xy):
+    def write_log_row(
+        self,
+        source,
+        gps_available,
+        ann_xy,
+        output_xy,
+        fuzzy_alpha_ann=math.nan,
+        fuzzy_alpha_odom=math.nan,
+        fuzzy_velocity_error=math.nan,
+    ):
         if self.log_writer is None or self.latest_odom is None:
             return
 
@@ -351,6 +392,9 @@ class AnnPseudoGps(Node):
             origin_source,
             f"{origin_xy[0]:.9f}",
             f"{origin_xy[1]:.9f}",
+            f"{fuzzy_alpha_ann:.9f}",
+            f"{fuzzy_alpha_odom:.9f}",
+            f"{fuzzy_velocity_error:.9f}",
         ])
         self.log_file.flush()
 
@@ -376,6 +420,59 @@ class AnnPseudoGps(Node):
 
         _, origin_xy = self.prediction_origin()
         return origin_xy + predicted_relative_xy
+
+    def apply_fuzzy_fusion(self, ann_xy):
+        velocity_error = self.velocity_disagreement()
+        if not self.fuzzy_fusion_enabled:
+            return ann_xy, 1.0, 0.0, velocity_error
+
+        alpha_ann = self.fuzzy_ann_weight(velocity_error)
+        alpha_odom = 1.0 - alpha_ann
+        odom_xy = np.array([
+            self.latest_odom.pose.pose.position.x,
+            self.latest_odom.pose.pose.position.y,
+        ], dtype=float)
+        fused_xy = alpha_ann * ann_xy + alpha_odom * odom_xy
+        return fused_xy, alpha_ann, alpha_odom, velocity_error
+
+    def fuzzy_ann_weight(self, velocity_error):
+        small = max(self.fuzzy_small_error, 1e-6)
+        large = max(self.fuzzy_large_error, small + 1e-6)
+
+        mu_zero = max(0.0, 1.0 - velocity_error / small)
+        if velocity_error <= small:
+            mu_small = velocity_error / small
+        elif velocity_error < large:
+            mu_small = (large - velocity_error) / (large - small)
+        else:
+            mu_small = 0.0
+        mu_small = max(0.0, min(1.0, mu_small))
+        mu_large = max(0.0, min(1.0, (velocity_error - small) / (large - small)))
+
+        total = mu_zero + mu_small + mu_large
+        if total <= 1e-9:
+            return self.clamp01(self.fuzzy_ann_weight_small)
+
+        alpha_ann = (
+            mu_zero * self.fuzzy_ann_weight_zero
+            + mu_small * self.fuzzy_ann_weight_small
+            + mu_large * self.fuzzy_ann_weight_large
+        ) / total
+        return self.clamp01(alpha_ann)
+
+    def velocity_disagreement(self):
+        if self.latest_odom is None:
+            return math.nan
+
+        odom_vx = self.latest_odom.twist.twist.linear.x
+        odom_vy = self.latest_odom.twist.twist.linear.y
+        odom_speed = math.hypot(odom_vx, odom_vy)
+        imu_speed = float(np.linalg.norm(self.imu_velocity[:2]))
+        return abs(imu_speed - odom_speed)
+
+    @staticmethod
+    def clamp01(value):
+        return max(0.0, min(1.0, float(value)))
 
     def prediction_origin(self):
         if self.model.target_mode == "residual" and self.gps_origin_xy is not None:

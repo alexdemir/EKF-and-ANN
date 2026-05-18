@@ -20,6 +20,7 @@ class EkfOutputLogger(Node):
         self.declare_parameter("ann_topic", "/odometry/ann")
         self.declare_parameter("kf_imu_topic", "/odometry/kf_gps_imu")
         self.declare_parameter("complementary_topic", "/odometry/kf_complementary")
+        self.declare_parameter("final_topic", "/odometry/fuzzy_localization")
         self.declare_parameter("log_path", "~/bumperbot_ws/src/ekf_output_log.csv")
 
         self.ekf_topic = self.get_parameter("ekf_topic").value
@@ -29,6 +30,7 @@ class EkfOutputLogger(Node):
         self.ann_topic = self.get_parameter("ann_topic").value
         self.kf_imu_topic = self.get_parameter("kf_imu_topic").value
         self.complementary_topic = self.get_parameter("complementary_topic").value
+        self.final_topic = self.get_parameter("final_topic").value
         self.log_path = os.path.expanduser(str(self.get_parameter("log_path").value))
 
         self.latest_pseudo = None
@@ -37,6 +39,7 @@ class EkfOutputLogger(Node):
         self.latest_ann = None
         self.latest_kf_imu = None
         self.latest_complementary = None
+        self.latest_final = None
 
         self.log_file = None
         self.log_writer = None
@@ -48,6 +51,7 @@ class EkfOutputLogger(Node):
         self.create_subscription(Odometry, self.ann_topic, self.ann_callback, 20)
         self.create_subscription(Odometry, self.kf_imu_topic, self.kf_imu_callback, 20)
         self.create_subscription(Odometry, self.complementary_topic, self.complementary_callback, 20)
+        self.create_subscription(Odometry, self.final_topic, self.final_callback, 20)
 
         self.open_log_writer()
         self.get_logger().info(f"EKF output logging enabled: {self.log_path}")
@@ -70,6 +74,9 @@ class EkfOutputLogger(Node):
     def complementary_callback(self, msg):
         self.latest_complementary = msg
 
+    def final_callback(self, msg):
+        self.latest_final = msg
+
     def ekf_callback(self, msg):
         if self.log_writer is None:
             return
@@ -81,6 +88,7 @@ class EkfOutputLogger(Node):
         ann_xy = self.xy_from_msg(self.latest_ann)
         kf_imu_xy = self.xy_from_msg(self.latest_kf_imu)
         complementary_xy = self.xy_from_msg(self.latest_complementary)
+        final_xy = self.xy_from_msg(self.latest_final)
 
         self.log_writer.writerow([
             f"{self.stamp_to_seconds(msg.header.stamp):.9f}",
@@ -91,12 +99,14 @@ class EkfOutputLogger(Node):
             *self.format_xy(ann_xy),
             *self.format_xy(kf_imu_xy),
             *self.format_xy(complementary_xy),
+            *self.format_xy(final_xy),
             self.format_error(ekf_xy, gps_xy),
             self.format_error(pseudo_xy, gps_xy),
             self.format_error(odom_xy, gps_xy),
             self.format_error(ann_xy, gps_xy),
             self.format_error(kf_imu_xy, gps_xy),
             self.format_error(complementary_xy, gps_xy),
+            self.format_error(final_xy, gps_xy),
         ])
         self.log_file.flush()
 
@@ -122,12 +132,15 @@ class EkfOutputLogger(Node):
             "kf_imu_y",
             "complementary_x",
             "complementary_y",
+            "final_x",
+            "final_y",
             "ekf_error_m",
             "pseudo_error_m",
             "odom_error_m",
             "ann_error_m",
             "kf_imu_error_m",
             "complementary_error_m",
+            "final_error_m",
         ])
         self.log_file.flush()
 

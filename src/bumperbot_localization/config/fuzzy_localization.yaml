@@ -1,0 +1,17 @@
+fuzzy_localization_node:
+  ros__parameters:
+    use_sim_time: true
+    ann_topic: /odometry/ann
+    kf2_topic: /odometry/kf_gps_odom
+    odom_topic: /bumperbot_controller/odom_noisy
+    imu_topic: /imu_sim
+    output_topic: /odometry/fuzzy_localization
+    frequency: 20.0
+    small_error: 0.10
+    large_error: 0.60
+    ann_weight_zero: 0.35
+    ann_weight_small: 0.70
+    ann_weight_large: 1.0
+    output_variance: 0.25
+    save_log: true
+    log_path: ~/bumperbot_ws/src/fuzzy_localization_log.csv
