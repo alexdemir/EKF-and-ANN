@@ -7,7 +7,7 @@ gps_hold_node:
     gps_timeout: 0.5
     force_gps_dropout_after_sec: 15.0
     force_gps_dropout_duration_sec: 0.0
-    hold_position_variance: 4.0
+    hold_position_variance: 0.25
     publish_hold_once: true
     save_log: true
     log_path: ~/bumperbot_ws/src/gps_hold_log.csv

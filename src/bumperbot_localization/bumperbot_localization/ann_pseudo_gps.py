@@ -2,8 +2,10 @@
 
 import copy
 import csv
+import hashlib
 import math
 import os
+import time
 
 import numpy as np
 import rclpy
@@ -12,6 +14,11 @@ from rclpy.node import Node
 from rcl_interfaces.msg import ParameterDescriptor
 from sensor_msgs.msg import Imu
 from tf_transformations import euler_from_quaternion
+
+
+ANSI_RED = "\033[1;31m"
+ANSI_YELLOW = "\033[1;33m"
+ANSI_RESET = "\033[0m"
 
 
 class SavedMlp:
@@ -25,6 +32,11 @@ class SavedMlp:
         self.target_scale = 10.0
         self.target_mode = "residual"
         self.target_origin = None
+        self.activation = "tanh"
+        self.input_frame = "world"
+        self.input_mean = None
+        self.input_std = None
+        self.input_normalization = "none"
         self.samples = 0
 
     @property
@@ -41,6 +53,27 @@ class SavedMlp:
         self.b3 = data["b3"]
         self.target_scale = float(data["target_scale"][0])
         self.target_mode = str(data["target_mode"][0])
+        if "activation" in data.files:
+            self.activation = str(data["activation"][0])
+        else:
+            self.activation = "tanh"
+        if "input_frame" in data.files:
+            self.input_frame = str(data["input_frame"][0])
+        else:
+            self.input_frame = "world"
+        if "input_mean" in data.files and "input_std" in data.files:
+            self.input_mean = np.array(data["input_mean"], dtype=float)
+            self.input_std = np.array(data["input_std"], dtype=float)
+            self.input_std = np.where(np.abs(self.input_std) < 1e-6, 1.0, self.input_std)
+            self.input_normalization = (
+                str(data["input_normalization"][0])
+                if "input_normalization" in data.files
+                else "standard"
+            )
+        else:
+            self.input_mean = None
+            self.input_std = None
+            self.input_normalization = "none"
         self.target_origin = None
         if "target_origin" in data.files:
             target_origin = np.array(data["target_origin"], dtype=float)
@@ -49,9 +82,25 @@ class SavedMlp:
         self.samples = int(data["samples"][0])
 
     def predict(self, x):
-        h1 = np.tanh(self.w1 @ x + self.b1)
-        h2 = np.tanh(self.w2 @ h1 + self.b2)
+        x = self.normalized_input(x)
+        if self.activation == "logsig":
+            h1 = self.logsig(self.w1 @ x + self.b1)
+            h2 = self.logsig(self.w2 @ h1 + self.b2)
+        else:
+            h1 = np.tanh(self.w1 @ x + self.b1)
+            h2 = np.tanh(self.w2 @ h1 + self.b2)
         return self.w3 @ h2 + self.b3
+
+    @staticmethod
+    def logsig(value):
+        return 1.0 / (1.0 + np.exp(-np.clip(value, -60.0, 60.0)))
+
+    def normalized_input(self, x):
+        if self.input_mean is None or self.input_std is None:
+            return x
+        if self.input_mean.shape != x.shape or self.input_std.shape != x.shape:
+            return x
+        return (x - self.input_mean) / self.input_std
 
 
 class AnnPseudoGps(Node):
@@ -114,9 +163,11 @@ class AnnPseudoGps(Node):
         self.fuzzy_ann_weight_large = float(self.get_parameter("fuzzy_ann_weight_large").value)
         self.save_log = bool(self.get_parameter("save_log").value)
         self.log_path = os.path.expanduser(str(self.get_parameter("log_path").value))
+        self.log_run_id = f"{int(time.time())}_{os.getpid()}"
 
         self.model = SavedMlp()
         self.model_mtime = None
+        self.model_hash = ""
 
         self.latest_odom = None
         self.latest_imu = None
@@ -136,6 +187,7 @@ class AnnPseudoGps(Node):
         self.was_gps_available = False
         self.log_file = None
         self.log_writer = None
+        self.log_rows_written = 0
 
         self.odom_sub = self.create_subscription(Odometry, self.odom_topic, self.odom_callback, 20)
         self.imu_sub = self.create_subscription(Imu, self.imu_topic, self.imu_callback, 50)
@@ -229,7 +281,16 @@ class AnnPseudoGps(Node):
             return
 
         if self.was_gps_available:
-            self.get_logger().warn("GPS timeout detected; switching to saved ANN pseudo-sensor")
+            if self.is_forced_dropout(now):
+                self.get_logger().warn(
+                    f"{ANSI_RED}===== FORCED GPS DROPOUT ACTIVE ===== pseudo GPS "
+                    f"switched from real GPS to ANN/FLS output. ====={ANSI_RESET}"
+                )
+            else:
+                self.get_logger().warn(
+                    f"{ANSI_YELLOW}===== GPS TIMEOUT ===== switching to saved ANN "
+                    f"pseudo-sensor. ====={ANSI_RESET}"
+                )
             self.was_gps_available = False
 
         if not self.model_ready():
@@ -297,10 +358,15 @@ class AnnPseudoGps(Node):
         try:
             self.model.load(self.model_path)
             self.model_mtime = model_mtime
+            self.model_hash = self.file_sha256(self.model_path)
             self.get_logger().info(
                 f"Loaded ANN model: {self.model_path}, samples={self.model.samples}, "
                 f"target_mode={self.model.target_mode}, "
-                f"target_origin_available={self.model.target_origin is not None}"
+                f"activation={self.model.activation}, "
+                f"input_frame={self.model.input_frame}, "
+                f"input_normalization={self.model.input_normalization}, "
+                f"target_origin_available={self.model.target_origin is not None}, "
+                f"sha256={self.model_hash[:12]}"
             )
         except (OSError, KeyError, ValueError) as exc:
             self.get_logger().error(f"Could not load ANN model: {exc}")
@@ -313,16 +379,28 @@ class AnnPseudoGps(Node):
             log_dir = os.path.dirname(self.log_path)
             if log_dir:
                 os.makedirs(log_dir, exist_ok=True)
+            if os.path.exists(self.log_path) and os.path.getsize(self.log_path) > 0:
+                root, ext = os.path.splitext(self.log_path)
+                backup_path = f"{root}.previous_{self.log_run_id}{ext}"
+                os.replace(self.log_path, backup_path)
+                self.get_logger().warn(
+                    f"{ANSI_YELLOW}Existing ANN pseudo GPS log was not overwritten. "
+                    f"Moved previous log to: {backup_path}{ANSI_RESET}"
+                )
             self.log_file = open(self.log_path, "w", newline="")
             self.log_writer = csv.writer(self.log_file)
             self.log_writer.writerow([
                 "stamp",
+                "log_run_id",
                 "source",
                 "gps_available",
                 "forced_dropout",
                 "model_loaded",
                 "model_ready",
                 "model_samples",
+                "model_sha256",
+                "model_target_mode",
+                "model_input_normalization",
                 "ann_x",
                 "ann_y",
                 "output_x",
@@ -337,9 +415,13 @@ class AnnPseudoGps(Node):
                 "fuzzy_alpha_ann",
                 "fuzzy_alpha_odom",
                 "fuzzy_velocity_error",
+                *[f"input_{index}" for index in range(15)],
             ])
             self.log_file.flush()
-            self.get_logger().info(f"ANN pseudo GPS logging enabled: {self.log_path}")
+            self.get_logger().info(
+                f"ANN pseudo GPS logging enabled: {self.log_path}, "
+                f"run_id={self.log_run_id}"
+            )
         except OSError as exc:
             self.log_file = None
             self.log_writer = None
@@ -372,15 +454,20 @@ class AnnPseudoGps(Node):
         if ann_xy is None:
             ann_xy = np.array([math.nan, math.nan], dtype=float)
         origin_source, origin_xy = self.prediction_origin()
+        input_vector = self.build_input_vector()
 
         self.log_writer.writerow([
             f"{self.clock_seconds():.9f}",
+            self.log_run_id,
             source,
             bool(gps_available),
             self.is_forced_dropout(self.clock_seconds()),
             self.model.loaded,
             self.model_ready(),
             self.model.samples,
+            self.model_hash,
+            self.model.target_mode,
+            self.model.input_normalization,
             f"{ann_xy[0]:.9f}",
             f"{ann_xy[1]:.9f}",
             f"{output_xy[0]:.9f}",
@@ -395,7 +482,9 @@ class AnnPseudoGps(Node):
             f"{fuzzy_alpha_ann:.9f}",
             f"{fuzzy_alpha_odom:.9f}",
             f"{fuzzy_velocity_error:.9f}",
+            *[f"{value:.9f}" for value in input_vector],
         ])
+        self.log_rows_written += 1
         self.log_file.flush()
 
     def close_log_writer(self):
@@ -403,6 +492,10 @@ class AnnPseudoGps(Node):
             return
         self.log_file.flush()
         self.log_file.close()
+        self.get_logger().info(
+            f"ANN pseudo GPS log closed: rows={self.log_rows_written}, "
+            f"path={self.log_path}, run_id={self.log_run_id}"
+        )
         self.log_file = None
         self.log_writer = None
 
@@ -475,12 +568,10 @@ class AnnPseudoGps(Node):
         return max(0.0, min(1.0, float(value)))
 
     def prediction_origin(self):
-        if self.model.target_mode == "residual" and self.gps_origin_xy is not None:
+        if self.gps_origin_xy is not None:
             return "first_gps", self.gps_origin_xy
         if self.model.target_origin is not None:
             return "model_target_origin", self.model.target_origin
-        if self.gps_origin_xy is not None:
-            return "first_gps", self.gps_origin_xy
         if self.initial_odom_position is not None:
             return "first_odom", self.initial_odom_position
         return "zero", np.zeros(2)
@@ -501,8 +592,10 @@ class AnnPseudoGps(Node):
 
         vx_body = odom.twist.twist.linear.x
         vy_body = odom.twist.twist.linear.y
-        vx_world = vx_body * math.cos(yaw) - vy_body * math.sin(yaw)
-        vy_world = vx_body * math.sin(yaw) + vy_body * math.cos(yaw)
+        odom_vx = vx_body * math.cos(yaw) - vy_body * math.sin(yaw)
+        odom_vy = vx_body * math.sin(yaw) + vy_body * math.cos(yaw)
+        odom_integral_x = self.cumulative_odom_position[0]
+        odom_integral_y = self.cumulative_odom_position[1]
 
         raw = np.array([
             accel[0],
@@ -516,27 +609,27 @@ class AnnPseudoGps(Node):
             imu_speed_mag,
             yaw,
             self.cumulative_yaw,
-            vx_world,
-            self.cumulative_odom_position[0],
-            vy_world,
-            self.cumulative_odom_position[1],
+            odom_vx,
+            odom_integral_x,
+            odom_vy,
+            odom_integral_y,
         ], dtype=float)
 
         scales = np.array([
-            5.0,
-            5.0,
-            5.0,
-            20.0,
-            20.0,
-            20.0,
-            2.0,
-            2.0,
-            2.0,
-            math.pi,
-            20.0,
-            2.0,
             10.0,
-            2.0,
+            10.0,
+            10.0,
+            100.0,
+            100.0,
+            100.0,
+            50.0,
+            50.0,
+            50.0,
+            math.pi,
+            100.0,
+            3.0,
+            10.0,
+            3.0,
             10.0,
         ], dtype=float)
         return np.clip(raw / scales, -1.0, 1.0)
@@ -593,6 +686,14 @@ class AnnPseudoGps(Node):
 
     def clock_seconds(self):
         return self.stamp_to_seconds(self.get_clock().now().to_msg())
+
+    @staticmethod
+    def file_sha256(path):
+        digest = hashlib.sha256()
+        with open(path, "rb") as file_obj:
+            for chunk in iter(lambda: file_obj.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
     @staticmethod
     def stamp_to_seconds(stamp):

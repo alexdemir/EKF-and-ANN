@@ -51,6 +51,7 @@ install(PROGRAMS
   ${PROJECT_NAME}/gps_hold.py
   ${PROJECT_NAME}/fuzzy_localization.py
   ${PROJECT_NAME}/ekf_output_logger.py
+  ${PROJECT_NAME}/fit_ann_model.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

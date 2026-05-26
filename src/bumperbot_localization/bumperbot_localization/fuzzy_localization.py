@@ -21,11 +21,15 @@ class FuzzyLocalization(Node):
         self.declare_parameter("imu_topic", "/imu_sim")
         self.declare_parameter("output_topic", "/odometry/fuzzy_localization")
         self.declare_parameter("frequency", 20.0)
-        self.declare_parameter("small_error", 0.10)
-        self.declare_parameter("large_error", 0.60)
-        self.declare_parameter("ann_weight_zero", 0.35)
-        self.declare_parameter("ann_weight_small", 0.70)
+        self.declare_parameter("small_error", 0.18)
+        self.declare_parameter("large_error", 0.35)
+        self.declare_parameter("ann_weight_zero", 0.05)
+        self.declare_parameter("ann_weight_small", 0.10)
         self.declare_parameter("ann_weight_large", 1.0)
+        self.declare_parameter("max_integrated_imu_speed", 2.0)
+        self.declare_parameter("imu_velocity_decay_tau", 12.0)
+        self.declare_parameter("imu_velocity_odom_correction_tau", 4.0)
+        self.declare_parameter("imu_velocity_correction_gate", 1.2)
         self.declare_parameter("output_variance", 0.25)
         self.declare_parameter("save_log", True)
         self.declare_parameter("log_path", "~/bumperbot_ws/src/fuzzy_localization_log.csv")
@@ -41,6 +45,14 @@ class FuzzyLocalization(Node):
         self.ann_weight_zero = float(self.get_parameter("ann_weight_zero").value)
         self.ann_weight_small = float(self.get_parameter("ann_weight_small").value)
         self.ann_weight_large = float(self.get_parameter("ann_weight_large").value)
+        self.max_integrated_imu_speed = float(self.get_parameter("max_integrated_imu_speed").value)
+        self.imu_velocity_decay_tau = float(self.get_parameter("imu_velocity_decay_tau").value)
+        self.imu_velocity_odom_correction_tau = float(
+            self.get_parameter("imu_velocity_odom_correction_tau").value
+        )
+        self.imu_velocity_correction_gate = float(
+            self.get_parameter("imu_velocity_correction_gate").value
+        )
         self.output_variance = float(self.get_parameter("output_variance").value)
         self.save_log = bool(self.get_parameter("save_log").value)
         self.log_path = os.path.expanduser(str(self.get_parameter("log_path").value))
@@ -50,7 +62,9 @@ class FuzzyLocalization(Node):
         self.latest_odom = None
         self.latest_imu = None
         self.last_imu_stamp = None
-        self.imu_velocity = np.zeros(3)
+        self.imu_body_velocity = np.zeros(2)
+        self.latest_odom_body_velocity = np.zeros(2)
+        self.latest_imu_body_velocity = np.zeros(2)
 
         self.log_file = None
         self.log_writer = None
@@ -78,17 +92,51 @@ class FuzzyLocalization(Node):
 
     def imu_callback(self, msg):
         stamp = self.stamp_to_seconds(msg.header.stamp)
-        accel = np.array([
-            msg.linear_acceleration.x,
-            msg.linear_acceleration.y,
-            msg.linear_acceleration.z,
-        ])
         if self.last_imu_stamp is not None:
             dt = stamp - self.last_imu_stamp
             if 0.0 < dt < 0.5:
-                self.imu_velocity += accel * dt
+                yaw_rate = msg.angular_velocity.z
+                vx, vy = self.imu_body_velocity
+
+                # Body-frame planar INS integration:
+                # a_body = dv_body/dt + omega x v_body, so dv_body/dt = a_body - omega x v_body.
+                dvx = msg.linear_acceleration.x + yaw_rate * vy
+                dvy = msg.linear_acceleration.y - yaw_rate * vx
+                self.imu_body_velocity += np.array([dvx, dvy]) * dt
+
+                if self.imu_velocity_decay_tau > 0.0:
+                    decay = math.exp(-dt / self.imu_velocity_decay_tau)
+                    self.imu_body_velocity *= decay
+
+                self.correct_imu_velocity_with_odom(dt)
+
+                speed = float(np.linalg.norm(self.imu_body_velocity))
+                if speed > self.max_integrated_imu_speed:
+                    self.imu_body_velocity *= self.max_integrated_imu_speed / speed
         self.last_imu_stamp = stamp
         self.latest_imu = msg
+
+    def correct_imu_velocity_with_odom(self, dt):
+        if self.latest_odom is None:
+            return
+        if self.imu_velocity_odom_correction_tau <= 0.0:
+            return
+
+        odom_body_velocity = np.array([
+            self.latest_odom.twist.twist.linear.x,
+            self.latest_odom.twist.twist.linear.y,
+        ], dtype=float)
+        disagreement = float(np.linalg.norm(self.imu_body_velocity - odom_body_velocity))
+        gate = max(self.imu_velocity_correction_gate, 1e-6)
+
+        # Correct accelerometer integration drift only while IMU and odometry still agree.
+        # When the disagreement grows, the gate closes so wheel slip is not hidden.
+        correction_gate = math.exp(-0.5 * (disagreement / gate) ** 2)
+        correction_alpha = (1.0 - math.exp(-dt / self.imu_velocity_odom_correction_tau))
+        correction_alpha *= correction_gate
+        self.imu_body_velocity += correction_alpha * (
+            odom_body_velocity - self.imu_body_velocity
+        )
 
     def timer_callback(self):
         if self.latest_ann is None or self.latest_kf2 is None or self.latest_odom is None:
@@ -96,21 +144,37 @@ class FuzzyLocalization(Node):
 
         ann_xy = self.xy_from_msg(self.latest_ann)
         kf2_xy = self.xy_from_msg(self.latest_kf2)
-        velocity_error = self.velocity_disagreement()
+        velocity_error, odom_body_velocity, imu_body_velocity = self.velocity_disagreement()
         alpha_ann = self.fuzzy_ann_weight(velocity_error)
         alpha_kf2 = 1.0 - alpha_ann
         output_xy = alpha_ann * ann_xy + alpha_kf2 * kf2_xy
 
         msg = self.make_output_msg(output_xy, self.latest_kf2)
         self.publisher.publish(msg)
-        self.write_log_row(ann_xy, kf2_xy, output_xy, alpha_ann, alpha_kf2, velocity_error)
+        self.write_log_row(
+            ann_xy,
+            kf2_xy,
+            output_xy,
+            alpha_ann,
+            alpha_kf2,
+            velocity_error,
+            odom_body_velocity,
+            imu_body_velocity,
+        )
 
     def velocity_disagreement(self):
         odom_vx = self.latest_odom.twist.twist.linear.x
         odom_vy = self.latest_odom.twist.twist.linear.y
-        odom_speed = math.hypot(odom_vx, odom_vy)
-        imu_speed = float(np.linalg.norm(self.imu_velocity[:2]))
-        return abs(imu_speed - odom_speed)
+        odom_body_velocity = np.array([odom_vx, odom_vy], dtype=float)
+        imu_body_velocity = np.array(self.imu_body_velocity, dtype=float)
+
+        self.latest_odom_body_velocity = odom_body_velocity
+        self.latest_imu_body_velocity = imu_body_velocity
+        return (
+            float(np.linalg.norm(imu_body_velocity - odom_body_velocity)),
+            odom_body_velocity,
+            imu_body_velocity,
+        )
 
     def fuzzy_ann_weight(self, velocity_error):
         small = max(self.small_error, 1e-6)
@@ -176,10 +240,24 @@ class FuzzyLocalization(Node):
             "alpha_ann",
             "alpha_kf2",
             "velocity_error",
+            "odom_vx",
+            "odom_vy",
+            "imu_vx",
+            "imu_vy",
         ])
         self.log_file.flush()
 
-    def write_log_row(self, ann_xy, kf2_xy, output_xy, alpha_ann, alpha_kf2, velocity_error):
+    def write_log_row(
+        self,
+        ann_xy,
+        kf2_xy,
+        output_xy,
+        alpha_ann,
+        alpha_kf2,
+        velocity_error,
+        odom_body_velocity,
+        imu_body_velocity,
+    ):
         if self.log_writer is None:
             return
         self.log_writer.writerow([
@@ -193,6 +271,10 @@ class FuzzyLocalization(Node):
             f"{alpha_ann:.9f}",
             f"{alpha_kf2:.9f}",
             f"{velocity_error:.9f}",
+            f"{odom_body_velocity[0]:.9f}",
+            f"{odom_body_velocity[1]:.9f}",
+            f"{imu_body_velocity[0]:.9f}",
+            f"{imu_body_velocity[1]:.9f}",
         ])
         self.log_file.flush()
 

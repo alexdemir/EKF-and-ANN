@@ -107,6 +107,10 @@ def generate_launch_description():
         output="screen",
         parameters=[
             ann_trainer_config,
+            {
+                "force_gps_dropout_after_sec": ann_force_gps_dropout_after_sec,
+                "force_gps_dropout_duration_sec": ann_force_gps_dropout_duration_sec,
+            },
             {"use_sim_time": True}
         ],
         condition=IfCondition(run_ann_trainer),
@@ -141,7 +145,6 @@ def generate_launch_description():
             },
             {"use_sim_time": True}
         ],
-        condition=IfCondition(run_ann_pseudo),
     )
 
     fuzzy_localization = Node(

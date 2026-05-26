@@ -68,9 +68,18 @@ class ComplementaryFilter(Node):
 
         kf1_position = self.latest_kf1.pose.pose.position
         kf2_position = self.latest_kf2.pose.pose.position
+        alpha1 = self.alpha1
+        alpha2 = self.alpha2
+        if (
+            abs(kf1_position.x) < 1e-6
+            and abs(kf1_position.y) < 1e-6
+            and (abs(kf2_position.x) > 0.25 or abs(kf2_position.y) > 0.25)
+        ):
+            alpha1 = 0.0
+            alpha2 = 1.0
 
-        fused.pose.pose.position.x = self.alpha1 * kf1_position.x + self.alpha2 * kf2_position.x
-        fused.pose.pose.position.y = self.alpha1 * kf1_position.y + self.alpha2 * kf2_position.y
+        fused.pose.pose.position.x = alpha1 * kf1_position.x + alpha2 * kf2_position.x
+        fused.pose.pose.position.y = alpha1 * kf1_position.y + alpha2 * kf2_position.y
         fused.pose.pose.position.z = 0.0
 
         fused.pose.pose.orientation = self.latest_kf1.pose.pose.orientation
@@ -78,14 +87,16 @@ class ComplementaryFilter(Node):
         fused.pose.covariance = self.blend_covariances(
             self.latest_kf1.pose.covariance,
             self.latest_kf2.pose.covariance,
+            alpha1,
+            alpha2,
         )
         fused.twist.covariance = self.latest_kf2.twist.covariance
 
         self.pub.publish(fused)
 
-    def blend_covariances(self, covariance1, covariance2):
+    def blend_covariances(self, covariance1, covariance2, alpha1, alpha2):
         return [
-            self.alpha1 * self.alpha1 * c1 + self.alpha2 * self.alpha2 * c2
+            alpha1 * alpha1 * c1 + alpha2 * alpha2 * c2
             for c1, c2 in zip(covariance1, covariance2)
         ]
 

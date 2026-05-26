@@ -2,6 +2,7 @@
 
 import copy
 import csv
+import hashlib
 import math
 import os
 import time
@@ -9,9 +10,15 @@ import time
 import numpy as np
 import rclpy
 from nav_msgs.msg import Odometry
+from rcl_interfaces.msg import ParameterDescriptor
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from tf_transformations import euler_from_quaternion
+
+
+ANSI_RED = "\033[1;31m"
+ANSI_YELLOW = "\033[1;33m"
+ANSI_RESET = "\033[0m"
 
 
 class OnlineMlp:
@@ -34,36 +41,88 @@ class OnlineMlp:
         self.adam_moment_1 = np.zeros(param_count)
         self.adam_moment_2 = np.zeros(param_count)
         self.adam_step = 0
+        self.inverse_hessian = np.eye(param_count)
+        self.pending_step = None
+        self.pending_gradient_delta = None
+        self.regularization_mask = self.pack_weight_mask()
+        self.input_mean = None
+        self.input_std = None
+        self.input_normalization = "none"
+        self.loaded_samples = 0
+        self.target_scale = None
+        self.target_mode = None
+
+    @staticmethod
+    def logsig(value):
+        return 1.0 / (1.0 + np.exp(-np.clip(value, -60.0, 60.0)))
 
     def predict(self, x):
-        h1 = np.tanh(self.w1 @ x + self.b1)
-        h2 = np.tanh(self.w2 @ h1 + self.b2)
+        x = self.normalized_input(x)
+        h1 = self.logsig(self.w1 @ x + self.b1)
+        h2 = self.logsig(self.w2 @ h1 + self.b2)
         return self.w3 @ h2 + self.b3
 
     def train_batch(self, inputs, targets):
         theta = self.pack()
         loss, gradient = self.loss_and_gradient(inputs, targets)
 
-        self.adam_step += 1
-        beta_1 = 0.9
-        beta_2 = 0.999
-        epsilon = 1e-8
-        self.adam_moment_1 = beta_1 * self.adam_moment_1 + (1.0 - beta_1) * gradient
-        self.adam_moment_2 = beta_2 * self.adam_moment_2 + (1.0 - beta_2) * (gradient * gradient)
-        corrected_moment_1 = self.adam_moment_1 / (1.0 - beta_1 ** self.adam_step)
-        corrected_moment_2 = self.adam_moment_2 / (1.0 - beta_2 ** self.adam_step)
+        if self.pending_step is not None and self.pending_gradient_delta is not None:
+            self.update_inverse_hessian(
+                self.pending_step,
+                self.pending_gradient_delta,
+            )
+            self.pending_step = None
+            self.pending_gradient_delta = None
 
-        step = -self.step_scale * corrected_moment_1 / (np.sqrt(corrected_moment_2) + epsilon)
+        direction = -self.inverse_hessian @ gradient
+        if float(direction @ gradient) >= 0.0 or not np.all(np.isfinite(direction)):
+            self.inverse_hessian = np.eye(theta.size)
+            direction = -gradient
+
+        step = self.step_scale * direction
         step_norm = float(np.linalg.norm(step))
         if step_norm > self.max_step_norm:
             step *= self.max_step_norm / step_norm
 
-        self.unpack(theta + step)
+        accepted_theta = theta + step
+        accepted_loss = math.inf
+        accepted_gradient = gradient
+        slope = float(gradient @ step)
+        for scale in (1.0, 0.5, 0.25, 0.125, 0.0625):
+            candidate_theta = theta + scale * step
+            self.unpack(candidate_theta)
+            candidate_loss, candidate_gradient = self.loss_and_gradient(inputs, targets)
+            if candidate_loss <= loss + 1e-4 * scale * slope or candidate_loss < accepted_loss:
+                accepted_theta = candidate_theta.copy()
+                accepted_loss = candidate_loss
+                accepted_gradient = candidate_gradient.copy()
+            if candidate_loss <= loss + 1e-4 * scale * slope:
+                break
+
+        self.unpack(accepted_theta)
+        self.pending_step = accepted_theta - theta
+        self.pending_gradient_delta = accepted_gradient - gradient
         self.samples += len(inputs)
-        self.last_loss = float(loss)
+        self.last_loss = float(accepted_loss)
         return self.last_loss
 
+    def update_inverse_hessian(self, step, gradient_delta):
+        curvature = float(gradient_delta @ step)
+        if curvature <= 1e-10 or not np.isfinite(curvature):
+            return
+
+        hessian_gradient_delta = self.inverse_hessian @ gradient_delta
+        gradient_hessian_gradient = float(gradient_delta @ hessian_gradient_delta)
+        if gradient_hessian_gradient <= 1e-12 or not np.isfinite(gradient_hessian_gradient):
+            return
+
+        self.inverse_hessian += (
+            np.outer(step, step) / curvature
+            - np.outer(hessian_gradient_delta, hessian_gradient_delta) / gradient_hessian_gradient
+        )
+
     def loss_and_gradient(self, inputs, targets):
+        inputs = self.normalized_inputs(inputs)
         batch_size = len(inputs)
         d_w1 = np.zeros_like(self.w1)
         d_b1 = np.zeros_like(self.b1)
@@ -75,9 +134,9 @@ class OnlineMlp:
 
         for x, target in zip(inputs, targets):
             z1 = self.w1 @ x + self.b1
-            h1 = np.tanh(z1)
+            h1 = self.logsig(z1)
             z2 = self.w2 @ h1 + self.b2
-            h2 = np.tanh(z2)
+            h2 = self.logsig(z2)
             prediction = self.w3 @ h2 + self.b3
             error = prediction - target
             loss += 0.5 * float(error @ error)
@@ -87,12 +146,12 @@ class OnlineMlp:
             d_b3 += d_out
 
             d_h2 = self.w3.T @ d_out
-            d_z2 = d_h2 * (1.0 - h2 * h2)
+            d_z2 = d_h2 * h2 * (1.0 - h2)
             d_w2 += np.outer(d_z2, h1)
             d_b2 += d_z2
 
             d_h1 = self.w2.T @ d_z2
-            d_z1 = d_h1 * (1.0 - h1 * h1)
+            d_z1 = d_h1 * h1 * (1.0 - h1)
             d_w1 += np.outer(d_z1, x)
             d_b1 += d_z1
 
@@ -106,10 +165,64 @@ class OnlineMlp:
         loss *= inv_batch
 
         theta = self.pack()
-        loss += 0.5 * self.regularization * float(theta @ theta)
+        weighted_theta = self.regularization_mask * theta
+        loss += 0.5 * self.regularization * float(theta @ weighted_theta)
         gradient = self.pack_gradients(d_w1, d_b1, d_w2, d_b2, d_w3, d_b3)
-        gradient += self.regularization * theta
+        gradient += self.regularization * weighted_theta
         return loss, gradient
+
+    def load(self, path):
+        data = np.load(path, allow_pickle=False)
+        activation = str(data["activation"][0]) if "activation" in data.files else "tanh"
+        if activation != "logsig":
+            raise ValueError(
+                f"Only logsig models can be fine-tuned online; got activation={activation}"
+            )
+
+        self.w1 = np.array(data["w1"], dtype=float)
+        self.b1 = np.array(data["b1"], dtype=float)
+        self.w2 = np.array(data["w2"], dtype=float)
+        self.b2 = np.array(data["b2"], dtype=float)
+        self.w3 = np.array(data["w3"], dtype=float)
+        self.b3 = np.array(data["b3"], dtype=float)
+        if "input_mean" in data.files and "input_std" in data.files:
+            self.input_mean = np.array(data["input_mean"], dtype=float)
+            self.input_std = np.array(data["input_std"], dtype=float)
+            self.input_std = np.where(np.abs(self.input_std) < 1e-6, 1.0, self.input_std)
+            self.input_normalization = (
+                str(data["input_normalization"][0])
+                if "input_normalization" in data.files
+                else "standard"
+            )
+        else:
+            self.input_mean = None
+            self.input_std = None
+            self.input_normalization = "none"
+        self.loaded_samples = int(data["samples"][0]) if "samples" in data.files else 0
+        self.target_scale = float(data["target_scale"][0]) if "target_scale" in data.files else None
+        self.target_mode = str(data["target_mode"][0]) if "target_mode" in data.files else None
+
+        param_count = self.pack().size
+        self.inverse_hessian = np.eye(param_count)
+        self.pending_step = None
+        self.pending_gradient_delta = None
+        self.regularization_mask = self.pack_weight_mask()
+
+    def normalized_input(self, x):
+        x = np.array(x, dtype=float)
+        if self.input_mean is None or self.input_std is None:
+            return x
+        if self.input_mean.shape != x.shape or self.input_std.shape != x.shape:
+            return x
+        return (x - self.input_mean) / self.input_std
+
+    def normalized_inputs(self, inputs):
+        inputs = np.array(inputs, dtype=float)
+        if self.input_mean is None or self.input_std is None:
+            return inputs
+        if inputs.ndim != 2 or inputs.shape[1] != self.input_mean.shape[0]:
+            return inputs
+        return (inputs - self.input_mean) / self.input_std
 
     def pack(self):
         return np.concatenate([
@@ -157,6 +270,16 @@ class OnlineMlp:
             d_b3,
         ])
 
+    def pack_weight_mask(self):
+        return np.concatenate([
+            np.ones(self.w1.size),
+            np.zeros(self.b1.size),
+            np.ones(self.w2.size),
+            np.zeros(self.b2.size),
+            np.ones(self.w3.size),
+            np.zeros(self.b3.size),
+        ])
+
 
 class AnnTrainer(Node):
     def __init__(self):
@@ -168,11 +291,22 @@ class AnnTrainer(Node):
         self.declare_parameter("target_topic", "/odometry/kf_complementary")
         self.declare_parameter("prediction_topic", "/odometry/ann_training_prediction")
         self.declare_parameter("gps_timeout", 0.5)
+        dynamic_float_descriptor = ParameterDescriptor(dynamic_typing=True)
+        self.declare_parameter(
+            "force_gps_dropout_after_sec",
+            -1.0,
+            dynamic_float_descriptor,
+        )
+        self.declare_parameter(
+            "force_gps_dropout_duration_sec",
+            0.0,
+            dynamic_float_descriptor,
+        )
         self.declare_parameter("sample_period", 1.0)
         self.declare_parameter("rmse_goal", 1.0e-4)
         self.declare_parameter("log_every_samples", 1)
         self.declare_parameter("target_scale", 50.0)
-        self.declare_parameter("target_mode", "residual")
+        self.declare_parameter("target_mode", "absolute")
         self.declare_parameter("recent_window_samples", 50)
         self.declare_parameter("training_window_samples", 250)
         self.declare_parameter("regularization", 0.01)
@@ -188,6 +322,8 @@ class AnnTrainer(Node):
         self.declare_parameter("dataset_path", "~/bumperbot_ws/src/ann_training_dataset.csv")
         self.declare_parameter("model_path", "~/bumperbot_ws/src/ann_model.npz")
         self.declare_parameter("save_model_every_samples", 25)
+        self.declare_parameter("load_existing_model", False)
+        self.declare_parameter("initial_model_path", "")
 
         self.imu_topic = self.get_parameter("imu_topic").value
         self.odom_topic = self.get_parameter("odom_topic").value
@@ -195,6 +331,12 @@ class AnnTrainer(Node):
         self.target_topic = self.get_parameter("target_topic").value
         self.prediction_topic = self.get_parameter("prediction_topic").value
         self.gps_timeout = float(self.get_parameter("gps_timeout").value)
+        self.force_gps_dropout_after_sec = float(
+            self.get_parameter("force_gps_dropout_after_sec").value
+        )
+        self.force_gps_dropout_duration_sec = float(
+            self.get_parameter("force_gps_dropout_duration_sec").value
+        )
         self.sample_period = float(self.get_parameter("sample_period").value)
         self.rmse_goal = float(self.get_parameter("rmse_goal").value)
         self.log_every_samples = int(self.get_parameter("log_every_samples").value)
@@ -202,9 +344,9 @@ class AnnTrainer(Node):
         self.target_mode = str(self.get_parameter("target_mode").value).lower()
         if self.target_mode not in ("absolute", "residual"):
             self.get_logger().warning(
-                f"Unknown target_mode={self.target_mode}; falling back to residual"
+                f"Unknown target_mode={self.target_mode}; falling back to absolute"
             )
-            self.target_mode = "residual"
+            self.target_mode = "absolute"
         self.recent_window_samples = int(self.get_parameter("recent_window_samples").value)
         self.training_window_samples = int(self.get_parameter("training_window_samples").value)
         self.max_training_iterations_per_sample = int(
@@ -219,15 +361,24 @@ class AnnTrainer(Node):
         self.dataset_path = os.path.expanduser(str(self.get_parameter("dataset_path").value))
         self.model_path = os.path.expanduser(str(self.get_parameter("model_path").value))
         self.save_model_every_samples = int(self.get_parameter("save_model_every_samples").value)
+        self.load_existing_model = bool(self.get_parameter("load_existing_model").value)
+        initial_model_path = str(self.get_parameter("initial_model_path").value).strip()
+        self.initial_model_path = os.path.expanduser(initial_model_path) if initial_model_path else self.model_path
 
         regularization = float(self.get_parameter("regularization").value)
         step_scale = float(self.get_parameter("step_scale").value)
         max_step_norm = float(self.get_parameter("max_step_norm").value)
         self.model = OnlineMlp(regularization, step_scale, max_step_norm)
+        self.loaded_model_hash = ""
+        if self.load_existing_model:
+            self.load_initial_model()
 
         self.latest_imu = None
         self.latest_odom = None
         self.last_gps_receive_time = None
+        self.start_time = None
+        self.forced_dropout_announced = False
+        self.gps_unavailable_announced = False
         self.last_imu_stamp = None
         self.last_odom_stamp = None
         self.last_yaw = None
@@ -274,8 +425,35 @@ class AnnTrainer(Node):
         self.get_logger().info(
             "ANN trainer started in paper-target mode: 15 IMU/odometry inputs, "
             f"2 KF-complementary outputs, target_mode={self.target_mode}, "
-            f"sample_period={self.sample_period:.2f}s, rmse_goal={self.rmse_goal:.1e}"
+            f"sample_period={self.sample_period:.2f}s, rmse_goal={self.rmse_goal:.1e}, "
+            f"load_existing_model={self.load_existing_model}, "
+            f"force_after={self.force_gps_dropout_after_sec:.3f}s"
         )
+
+    def load_initial_model(self):
+        if not os.path.exists(self.initial_model_path):
+            self.get_logger().warning(
+                f"Requested load_existing_model but file does not exist: {self.initial_model_path}"
+            )
+            return
+        try:
+            self.model.load(self.initial_model_path)
+            if self.model.target_scale is not None:
+                self.target_scale = self.model.target_scale
+            if self.model.target_mode in ("absolute", "residual"):
+                self.target_mode = self.model.target_mode
+            self.loaded_model_hash = self.file_sha256(self.initial_model_path)
+            self.get_logger().info(
+                "Loaded initial ANN model for online fine-tuning: "
+                f"{self.initial_model_path}, samples={self.model.loaded_samples}, "
+                f"target_mode={self.target_mode}, target_scale={self.target_scale:.3f}, "
+                f"input_normalization={self.model.input_normalization}, "
+                f"sha256={self.loaded_model_hash[:12]}"
+            )
+        except (OSError, KeyError, ValueError) as exc:
+            self.get_logger().error(
+                f"Could not load initial ANN model {self.initial_model_path}: {exc}"
+            )
 
     def imu_callback(self, msg):
         stamp = self.stamp_to_seconds(msg.header.stamp)
@@ -329,9 +507,13 @@ class AnnTrainer(Node):
             return
 
         now = self.clock_seconds()
+        if self.start_time is None:
+            self.start_time = now
         target_time = self.stamp_to_seconds(msg.header.stamp)
         if not self.is_gps_available(now):
+            self.announce_gps_unavailable(now)
             return
+        self.gps_unavailable_announced = False
 
         target_xy = np.array([
             msg.pose.pose.position.x,
@@ -444,12 +626,12 @@ class AnnTrainer(Node):
         ], dtype=float)
 
         scales = np.array([
-            5.0, 5.0, 5.0,
-            20.0, 20.0, 20.0,
-            2.0, 2.0, 2.0,
-            math.pi, 20.0,
-            2.0, 10.0,
-            2.0, 10.0,
+            10.0, 10.0, 10.0,
+            100.0, 100.0, 100.0,
+            50.0, 50.0, 50.0,
+            math.pi, 100.0,
+            3.0, 10.0,
+            3.0, 10.0,
         ], dtype=float)
         return np.clip(raw / scales, -1.0, 1.0)
 
@@ -511,7 +693,7 @@ class AnnTrainer(Node):
             self.log_training_state("converged")
             return
 
-        training_iterations = max(self.max_training_iterations_per_sample, 1)
+        training_iterations = max(self.max_training_iterations_per_sample, 0)
         use_full_window = False
         self.last_training_mode = "online"
         if (
@@ -522,6 +704,12 @@ class AnnTrainer(Node):
             training_iterations = max(self.full_training_iterations, training_iterations)
             use_full_window = True
             self.last_training_mode = "full"
+
+        if training_iterations <= 0:
+            self.last_training_mode = "collect_only"
+            self.last_training_duration = time.monotonic() - training_start
+            self.log_training_state("active")
+            return
 
         for _ in range(training_iterations):
             inputs, targets = self.training_batch(use_full_window)
@@ -765,7 +953,24 @@ class AnnTrainer(Node):
                     if self.target_origin is not None
                     else np.array([math.nan, math.nan], dtype=float)
                 ),
-                samples=np.array([self.collected_samples], dtype=int),
+                samples=np.array([self.model.loaded_samples + self.collected_samples], dtype=int),
+                fine_tune_samples=np.array([self.collected_samples], dtype=int),
+                initial_model_samples=np.array([self.model.loaded_samples], dtype=int),
+                activation=np.array(["logsig"]),
+                input_frame=np.array(["world"]),
+                input_mean=(
+                    self.model.input_mean
+                    if self.model.input_mean is not None
+                    else np.array([], dtype=float)
+                ),
+                input_std=(
+                    self.model.input_std
+                    if self.model.input_std is not None
+                    else np.array([], dtype=float)
+                ),
+                input_normalization=np.array([self.model.input_normalization]),
+                initial_model_path=np.array([self.initial_model_path]),
+                initial_model_sha256=np.array([self.loaded_model_hash]),
             )
             self.last_saved_sample = self.collected_samples
             self.get_logger().info(
@@ -775,9 +980,44 @@ class AnnTrainer(Node):
             self.get_logger().error(f"Could not save ANN model: {exc}")
 
     def is_gps_available(self, stamp):
+        if self.is_forced_dropout(stamp):
+            return False
         if self.last_gps_receive_time is None:
             return False
         return 0.0 <= stamp - self.last_gps_receive_time <= self.gps_timeout
+
+    def is_forced_dropout(self, now):
+        if self.start_time is None:
+            return False
+        if self.force_gps_dropout_after_sec < 0.0:
+            return False
+        elapsed = now - self.start_time
+        if elapsed < self.force_gps_dropout_after_sec:
+            return False
+        if self.force_gps_dropout_duration_sec <= 0.0:
+            return True
+        return elapsed <= (
+            self.force_gps_dropout_after_sec + self.force_gps_dropout_duration_sec
+        )
+
+    def announce_gps_unavailable(self, now):
+        if self.is_forced_dropout(now):
+            if not self.forced_dropout_announced:
+                self.get_logger().warn(
+                    f"{ANSI_RED}===== FORCED GPS DROPOUT ACTIVE ===== "
+                    "ANN trainer stopped collecting "
+                    "samples and stopped online fine-tuning. Pseudo/hold/FLS test phase "
+                    f"is now active. ====={ANSI_RESET}"
+                )
+                self.forced_dropout_announced = True
+            return
+
+        if not self.gps_unavailable_announced:
+            self.get_logger().warn(
+                f"{ANSI_YELLOW}===== GPS UNAVAILABLE ===== ANN trainer sample "
+                f"collection is paused. ====={ANSI_RESET}"
+            )
+            self.gps_unavailable_announced = True
 
     def training_target_from_relative(self, target_relative_xy, odom_relative_xy):
         if self.target_mode == "residual":
@@ -809,6 +1049,14 @@ class AnnTrainer(Node):
 
     def clock_seconds(self):
         return self.stamp_to_seconds(self.get_clock().now().to_msg())
+
+    @staticmethod
+    def file_sha256(path):
+        digest = hashlib.sha256()
+        with open(path, "rb") as file_obj:
+            for chunk in iter(lambda: file_obj.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
 
 def main(args=None):
