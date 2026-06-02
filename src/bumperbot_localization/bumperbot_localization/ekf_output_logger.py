@@ -16,6 +16,7 @@ class EkfOutputLogger(Node):
         self.declare_parameter("ekf_topic", "/odometry/kf_gps_odom")
         self.declare_parameter("pseudo_topic", "/odometry/gps_or_ann")
         self.declare_parameter("gps_topic", "/odometry/gps_sim")
+        self.declare_parameter("reference_topic", "/odometry/gps_sim")
         self.declare_parameter("odom_topic", "/bumperbot_controller/odom_noisy")
         self.declare_parameter("ann_topic", "/odometry/ann")
         self.declare_parameter("kf_imu_topic", "/odometry/kf_gps_imu")
@@ -26,6 +27,7 @@ class EkfOutputLogger(Node):
         self.ekf_topic = self.get_parameter("ekf_topic").value
         self.pseudo_topic = self.get_parameter("pseudo_topic").value
         self.gps_topic = self.get_parameter("gps_topic").value
+        self.reference_topic = self.get_parameter("reference_topic").value
         self.odom_topic = self.get_parameter("odom_topic").value
         self.ann_topic = self.get_parameter("ann_topic").value
         self.kf_imu_topic = self.get_parameter("kf_imu_topic").value
@@ -35,6 +37,7 @@ class EkfOutputLogger(Node):
 
         self.latest_pseudo = None
         self.latest_gps = None
+        self.latest_reference = None
         self.latest_odom = None
         self.latest_ann = None
         self.latest_kf_imu = None
@@ -47,6 +50,7 @@ class EkfOutputLogger(Node):
         self.create_subscription(Odometry, self.ekf_topic, self.ekf_callback, 20)
         self.create_subscription(Odometry, self.pseudo_topic, self.pseudo_callback, 20)
         self.create_subscription(Odometry, self.gps_topic, self.gps_callback, 20)
+        self.create_subscription(Odometry, self.reference_topic, self.reference_callback, 20)
         self.create_subscription(Odometry, self.odom_topic, self.odom_callback, 20)
         self.create_subscription(Odometry, self.ann_topic, self.ann_callback, 20)
         self.create_subscription(Odometry, self.kf_imu_topic, self.kf_imu_callback, 20)
@@ -61,6 +65,9 @@ class EkfOutputLogger(Node):
 
     def gps_callback(self, msg):
         self.latest_gps = msg
+
+    def reference_callback(self, msg):
+        self.latest_reference = msg
 
     def odom_callback(self, msg):
         self.latest_odom = msg
@@ -84,6 +91,7 @@ class EkfOutputLogger(Node):
         ekf_xy = self.xy_from_msg(msg)
         pseudo_xy = self.xy_from_msg(self.latest_pseudo)
         gps_xy = self.xy_from_msg(self.latest_gps)
+        reference_xy = self.xy_from_msg(self.latest_reference)
         odom_xy = self.xy_from_msg(self.latest_odom)
         ann_xy = self.xy_from_msg(self.latest_ann)
         kf_imu_xy = self.xy_from_msg(self.latest_kf_imu)
@@ -95,18 +103,19 @@ class EkfOutputLogger(Node):
             *self.format_xy(ekf_xy),
             *self.format_xy(pseudo_xy),
             *self.format_xy(gps_xy),
+            *self.format_xy(reference_xy),
             *self.format_xy(odom_xy),
             *self.format_xy(ann_xy),
             *self.format_xy(kf_imu_xy),
             *self.format_xy(complementary_xy),
             *self.format_xy(final_xy),
-            self.format_error(ekf_xy, gps_xy),
-            self.format_error(pseudo_xy, gps_xy),
-            self.format_error(odom_xy, gps_xy),
-            self.format_error(ann_xy, gps_xy),
-            self.format_error(kf_imu_xy, gps_xy),
-            self.format_error(complementary_xy, gps_xy),
-            self.format_error(final_xy, gps_xy),
+            *self.format_error_components(ekf_xy, reference_xy),
+            *self.format_error_components(pseudo_xy, reference_xy),
+            *self.format_error_components(odom_xy, reference_xy),
+            *self.format_error_components(ann_xy, reference_xy),
+            *self.format_error_components(kf_imu_xy, reference_xy),
+            *self.format_error_components(complementary_xy, reference_xy),
+            *self.format_error_components(final_xy, reference_xy),
         ])
         self.log_file.flush()
 
@@ -124,6 +133,8 @@ class EkfOutputLogger(Node):
             "pseudo_y",
             "gps_x",
             "gps_y",
+            "reference_x",
+            "reference_y",
             "odom_x",
             "odom_y",
             "ann_x",
@@ -134,12 +145,26 @@ class EkfOutputLogger(Node):
             "complementary_y",
             "final_x",
             "final_y",
+            "ekf_error_x",
+            "ekf_error_y",
             "ekf_error_m",
+            "pseudo_error_x",
+            "pseudo_error_y",
             "pseudo_error_m",
+            "odom_error_x",
+            "odom_error_y",
             "odom_error_m",
+            "ann_error_x",
+            "ann_error_y",
             "ann_error_m",
+            "kf_imu_error_x",
+            "kf_imu_error_y",
             "kf_imu_error_m",
+            "complementary_error_x",
+            "complementary_error_y",
             "complementary_error_m",
+            "final_error_x",
+            "final_error_y",
             "final_error_m",
         ])
         self.log_file.flush()
@@ -170,6 +195,19 @@ class EkfOutputLogger(Node):
         if not all(math.isfinite(value) for value in (*a, *b)):
             return "nan"
         return f"{math.hypot(a[0] - b[0], a[1] - b[1]):.9f}"
+
+    @staticmethod
+    def format_error_components(a, b):
+        if not all(math.isfinite(value) for value in (*a, *b)):
+            return ["nan", "nan", "nan"]
+        error_x = a[0] - b[0]
+        error_y = a[1] - b[1]
+        error_m = math.hypot(error_x, error_y)
+        return [
+            f"{error_x:.9f}",
+            f"{error_y:.9f}",
+            f"{error_m:.9f}",
+        ]
 
     @staticmethod
     def stamp_to_seconds(stamp):
