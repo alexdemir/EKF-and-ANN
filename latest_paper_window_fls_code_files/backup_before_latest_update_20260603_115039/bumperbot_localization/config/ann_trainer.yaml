@@ -1,0 +1,35 @@
+ann_trainer_node:
+  ros__parameters:
+    use_sim_time: true
+    imu_topic: /imu_sim
+    odom_topic: /bumperbot_controller/odom_noisy
+    gps_topic: /odometry/gps_sim
+    target_topic: /odometry/kf_complementary
+    prediction_topic: /odometry/ann_training_prediction
+    gps_timeout: 5.0
+    forced_dropout_windows: ""
+    sample_period: 0.2
+    rmse_goal: 1.0e-4
+    log_every_samples: 1
+    target_scale: 10.0
+    target_mode: absolute
+    recent_window_samples: 50
+    training_window_samples: 250
+    regularization: 0.0005
+    step_scale: 0.05
+    max_step_norm: 0.02
+    max_training_iterations_per_sample: 1
+    full_training_every_samples: 25
+    full_training_iterations: 0
+    min_samples_for_convergence: 50
+    batch_size: 32
+    buffer_size: 3500
+    save_dataset: true
+    dataset_path: ~/bumperbot_ws/src/ann_training_dataset.csv
+    model_path: ~/bumperbot_ws/src/ann_model.npz
+    save_model_every_samples: 20
+    load_existing_model: true
+    initial_model_path: ~/bumperbot_ws/src/ann_model.npz
+    pause_training_on_slip: true
+    slip_training_error_threshold: 1.60
+    slip_training_min_odom_speed: 0.10

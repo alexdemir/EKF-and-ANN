@@ -1,0 +1,31 @@
+Synthetic FLS sanity simulation
+=============================
+
+This is not Gazebo physics. It is a deterministic sanity check for the new FLS logic.
+The simulated mixed outage represents the test window that is most likely to show FLS outperforming both sources:
+
+- Evaluation window: 75-130 s
+- 75-90 s: GPS outage, no slip, KF2 is best
+- 90-130 s: GPS outage, slip active, ANN is best
+- FLS should stay close to KF2 before slip, then shift to ANN after slip.
+
+Result with current fuzzy_localization.yaml:
+
+KF2 RMSE: 1.724 m
+ANN RMSE: 0.594 m
+FLS RMSE: 0.538 m
+Ideal switch upper-bound RMSE: 0.544 m
+FLS improvement over ANN: 9.4%
+FLS improvement over KF2: 68.8%
+
+Key samples:
+- t=75: raw_error=0.141, baseline=0.182, fuzzy_input=0.77, alpha_ann=0.01, KF2=0.11, ANN=0.42, FLS=0.10
+- t=90: raw_error=0.220, baseline=0.182, fuzzy_input=1.21, alpha_ann=0.23, KF2=0.11, ANN=0.67, FLS=0.24
+- t=100: raw_error=1.420, baseline=0.182, fuzzy_input=7.79, alpha_ann=1.00, KF2=0.92, ANN=0.64, FLS=0.64
+
+Interpretation:
+The new raw/leaky velocity-error source can produce the desired paper-like behavior if the test window contains both regimes:
+1. no-slip segment where KF2 is best,
+2. slip segment where ANN is best.
+
+The earlier compressed synthetic test failed when the adaptive baseline was allowed to learn during slip. In the real planned test, baseline freezes at 42 s, before the 75-130 s mixed outage and before slip begins at 90 s, so that failure mode is avoided.

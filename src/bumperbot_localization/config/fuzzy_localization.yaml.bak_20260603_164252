@@ -1,0 +1,37 @@
+fuzzy_localization_node:
+  ros__parameters:
+    use_sim_time: true
+    ann_topic: /odometry/ann
+    kf2_topic: /odometry/kf_gps_odom
+    odom_topic: /bumperbot_controller/odom_noisy
+    imu_topic: /imu_sim
+    output_topic: /odometry/fuzzy_localization
+    frequency: 20.0
+    small_error: 1.35
+    large_error: 2.10
+    ann_weight_zero: 0.0
+    ann_weight_small: 0.25
+    ann_weight_large: 1.0
+    adaptive_error_enabled: false
+    adaptive_baseline_tau: 8.0
+    adaptive_min_baseline: 0.03
+    adaptive_min_odom_speed: 0.10
+    adaptive_freeze_after_sec: 42.0
+    adaptive_deadband_ratio: 0.0
+    velocity_error_source: max
+    use_normalized_velocity_error: false
+    min_velocity_norm_for_error: 0.15
+    max_integrated_imu_speed: 2.0
+    raw_imu_velocity_decay_tau: 10.0
+    imu_velocity_decay_tau: 12.0
+    imu_velocity_odom_correction_tau: 4.0
+    imu_velocity_correction_gate: 1.2
+    alpha_rise_tau: 0.12
+    alpha_fall_tau: 1.20
+    disagreement_boost_enabled: false
+    disagreement_small: 0.75
+    disagreement_large: 1.05
+    disagreement_min_velocity_error: 1.75
+    output_variance: 0.25
+    save_log: true
+    log_path: ~/bumperbot_ws/src/fuzzy_localization_log.csv

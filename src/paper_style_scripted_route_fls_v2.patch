@@ -1,0 +1,324 @@
+diff --git a/bumperbot_controller/bumperbot_controller/scripted_trajectory.py b/bumperbot_controller/bumperbot_controller/scripted_trajectory.py
+new file mode 100755
+index 0000000..1111111
+--- /dev/null
++++ b/bumperbot_controller/bumperbot_controller/scripted_trajectory.py
+@@ -0,0 +1,154 @@
++#!/usr/bin/env python3
++
++import math
++
++import rclpy
++from geometry_msgs.msg import TwistStamped
++from rclpy.node import Node
++
++
++ANSI_CYAN = "\033[1;36m"
++ANSI_GREEN = "\033[1;32m"
++ANSI_YELLOW = "\033[1;33m"
++ANSI_RESET = "\033[0m"
++
++
++class ScriptedTrajectory(Node):
++    """Publish repeatable cmd_vel profiles for paper-style outage tests."""
++
++    def __init__(self):
++        super().__init__("scripted_trajectory_node")
++
++        self.declare_parameter("cmd_topic", "bumperbot_controller/cmd_vel")
++        self.declare_parameter("frequency", 20.0)
++        self.declare_parameter("profile", "paper_fls")
++        self.declare_parameter("speed_scale", 1.0)
++        self.declare_parameter("start_delay_sec", 2.0)
++        self.declare_parameter("stop_at_end", True)
++
++        self.cmd_topic = str(self.get_parameter("cmd_topic").value)
++        self.frequency = float(self.get_parameter("frequency").value)
++        self.profile_name = str(self.get_parameter("profile").value)
++        self.speed_scale = float(self.get_parameter("speed_scale").value)
++        self.start_delay_sec = float(self.get_parameter("start_delay_sec").value)
++        self.stop_at_end = bool(self.get_parameter("stop_at_end").value)
++
++        self.segments = self.make_profile(self.profile_name)
++        self.total_duration = sum(segment["duration"] for segment in self.segments)
++        self.start_time = None
++        self.last_segment_index = None
++        self.finished = False
++
++        self.publisher = self.create_publisher(TwistStamped, self.cmd_topic, 10)
++        self.timer = self.create_timer(1.0 / max(self.frequency, 1.0), self.on_timer)
++
++        self.get_logger().info(
++            f"{ANSI_CYAN}Scripted trajectory ready: profile={self.profile_name}, "
++            f"duration={self.total_duration:.1f}s, cmd_topic={self.cmd_topic}. "
++            "Recommended test windows: GPS outages 45:20,85:35,145:30; "
++            f"slip 100:80.{ANSI_RESET}"
++        )
++
++    def make_profile(self, profile_name):
++        if profile_name != "paper_fls":
++            raise ValueError("Only profile='paper_fls' is currently supported.")
++
++        # Time-based route designed to create three paper-style outage cases:
++        # 45-65s: no-slip, mixed straight/turn trend.
++        # 85-120s: starts no-slip, then enters slip at 100s.
++        # 145-175s: slip with changing turn direction.
++        return [
++            self.segment(8.0, 0.00, 0.00, "settle"),
++            self.segment(18.0, 0.35, 0.00, "training straight"),
++            self.segment(14.0, 0.32, 0.45, "training left arc"),
++            self.segment(16.0, 0.45, 0.00, "outage-1 straight no-slip"),
++            self.segment(14.0, 0.35, -0.50, "outage-1 right turn no-slip"),
++            self.segment(16.0, 0.50, 0.00, "gps update straight"),
++            self.segment(15.0, 0.35, 0.55, "outage-2 no-slip left turn"),
++            self.segment(24.0, 0.45, 0.00, "outage-2 slip straight"),
++            self.segment(18.0, 0.35, -0.55, "slip right arc"),
++            self.segment(20.0, 0.45, 0.35, "outage-3 slip left arc"),
++            self.segment(20.0, 0.35, -0.55, "outage-3 slip counter turn"),
++            self.segment(12.0, 0.30, 0.00, "cooldown straight"),
++        ]
++
++    def segment(self, duration, linear, angular, label):
++        return {
++            "duration": float(duration),
++            "linear": float(linear),
++            "angular": float(angular),
++            "label": label,
++        }
++
++    def on_timer(self):
++        now = self.get_clock().now()
++        if self.start_time is None:
++            self.start_time = now
++
++        elapsed = (now - self.start_time).nanoseconds * 1e-9
++        cmd = TwistStamped()
++        cmd.header.stamp = now.to_msg()
++        cmd.header.frame_id = "base_footprint"
++
++        if elapsed < self.start_delay_sec:
++            self.publish_command(cmd, 0.0, 0.0)
++            return
++
++        route_time = elapsed - self.start_delay_sec
++        segment_index, segment = self.current_segment(route_time)
++
++        if segment is None:
++            if self.stop_at_end:
++                self.publish_command(cmd, 0.0, 0.0)
++                if not self.finished:
++                    self.get_logger().warn(
++                        f"{ANSI_GREEN}===== SCRIPTED TRAJECTORY FINISHED ===== "
++                        f"profile={self.profile_name}, elapsed={elapsed:.1f}s ====={ANSI_RESET}"
++                    )
++                self.finished = True
++            return
++
++        if segment_index != self.last_segment_index:
++            self.get_logger().warn(
++                f"{ANSI_YELLOW}===== SCRIPTED SEGMENT {segment_index + 1}/{len(self.segments)}: "
++                f"{segment['label']} ===== t={route_time:.1f}s, "
++                f"v={segment['linear']:.2f}, w={segment['angular']:.2f}{ANSI_RESET}"
++            )
++            self.last_segment_index = segment_index
++
++        self.publish_command(
++            cmd,
++            segment["linear"] * self.speed_scale,
++            segment["angular"] * self.speed_scale,
++        )
++
++    def current_segment(self, route_time):
++        cursor = 0.0
++        for index, segment in enumerate(self.segments):
++            cursor_next = cursor + segment["duration"]
++            if route_time < cursor_next:
++                return index, segment
++            cursor = cursor_next
++        return None, None
++
++    def publish_command(self, msg, linear, angular):
++        if not math.isfinite(linear) or not math.isfinite(angular):
++            linear = 0.0
++            angular = 0.0
++        msg.twist.linear.x = float(linear)
++        msg.twist.angular.z = float(angular)
++        self.publisher.publish(msg)
++
++
++def main():
++    rclpy.init()
++    node = ScriptedTrajectory()
++    try:
++        rclpy.spin(node)
++    finally:
++        node.destroy_node()
++        rclpy.shutdown()
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/bumperbot_controller/CMakeLists.txt b/bumperbot_controller/CMakeLists.txt
+--- a/bumperbot_controller/CMakeLists.txt
++++ b/bumperbot_controller/CMakeLists.txt
+@@ -43,6 +43,7 @@
+ install(PROGRAMS
+   ${PROJECT_NAME}/simple_controller.py
+   ${PROJECT_NAME}/noisy_controller.py
++  ${PROJECT_NAME}/scripted_trajectory.py
+   DESTINATION lib/${PROJECT_NAME}
+ )
+ 
+diff --git a/bumperbot_controller/launch/controller.launch.py b/bumperbot_controller/launch/controller.launch.py
+--- a/bumperbot_controller/launch/controller.launch.py
++++ b/bumperbot_controller/launch/controller.launch.py
+@@ -87,6 +87,23 @@
+         "use_simple_controller",
+         default_value="True",
+     )
++    run_scripted_trajectory_arg = DeclareLaunchArgument(
++        "run_scripted_trajectory",
++        default_value="false",
++        description="Publish a repeatable paper-style cmd_vel route for ANN/FLS validation.",
++    )
++    scripted_trajectory_profile_arg = DeclareLaunchArgument(
++        "scripted_trajectory_profile",
++        default_value="paper_fls",
++    )
++    scripted_speed_scale_arg = DeclareLaunchArgument(
++        "scripted_speed_scale",
++        default_value="1.0",
++    )
++    scripted_start_delay_sec_arg = DeclareLaunchArgument(
++        "scripted_start_delay_sec",
++        default_value="2.0",
++    )
+     wheel_radius_arg = DeclareLaunchArgument(
+         "wheel_radius",
+         default_value="0.033",
+@@ -154,6 +171,10 @@
+     
+     use_sim_time = LaunchConfiguration("use_sim_time")
+     use_simple_controller = LaunchConfiguration("use_simple_controller")
++    run_scripted_trajectory = LaunchConfiguration("run_scripted_trajectory")
++    scripted_trajectory_profile = LaunchConfiguration("scripted_trajectory_profile")
++    scripted_speed_scale = LaunchConfiguration("scripted_speed_scale")
++    scripted_start_delay_sec = LaunchConfiguration("scripted_start_delay_sec")
+     wheel_radius = LaunchConfiguration("wheel_radius")
+     wheel_separation = LaunchConfiguration("wheel_separation")
+ 
+@@ -202,11 +223,31 @@
+ 
+     noisy_controller_launch = OpaqueFunction(function=noisy_controller)
+ 
++    scripted_trajectory = Node(
++        package="bumperbot_controller",
++        executable="scripted_trajectory.py",
++        name="scripted_trajectory_node",
++        output="screen",
++        parameters=[
++            {
++                "profile": scripted_trajectory_profile,
++                "speed_scale": scripted_speed_scale,
++                "start_delay_sec": scripted_start_delay_sec,
++                "use_sim_time": use_sim_time,
++            }
++        ],
++        condition=IfCondition(run_scripted_trajectory),
++    )
++
+     return LaunchDescription(
+         [
+             use_sim_time_arg,
+             odom_error_profile_arg,
+             use_simple_controller_arg,
++            run_scripted_trajectory_arg,
++            scripted_trajectory_profile_arg,
++            scripted_speed_scale_arg,
++            scripted_start_delay_sec_arg,
+             wheel_radius_arg,
+             wheel_separation_arg,
+             wheel_radius_error_arg,
+@@ -227,5 +268,6 @@
+             wheel_controller_spawner,
+             simple_controller,
+             noisy_controller_launch,
++            scripted_trajectory,
+         ]
+     )
+diff --git a/bumperbot_localization/config/fuzzy_localization.yaml b/bumperbot_localization/config/fuzzy_localization.yaml
+--- a/bumperbot_localization/config/fuzzy_localization.yaml
++++ b/bumperbot_localization/config/fuzzy_localization.yaml
+@@ -7,27 +7,27 @@
+     imu_topic: /imu_sim
+     output_topic: /odometry/fuzzy_localization
+     frequency: 20.0
+-    small_error: 1.35
+-    large_error: 1.90
++    small_error: 0.35
++    large_error: 0.50
+     ann_weight_zero: 0.0
+-    ann_weight_small: 0.25
++    ann_weight_small: 0.45
+     ann_weight_large: 1.0
+-    adaptive_error_enabled: true
++    adaptive_error_enabled: false
+     adaptive_baseline_tau: 8.0
+     adaptive_min_baseline: 0.03
+     adaptive_min_odom_speed: 0.10
+     adaptive_freeze_after_sec: 42.0
+-    adaptive_deadband_ratio: 1.25
++    adaptive_deadband_ratio: 0.0
+     velocity_error_source: corrected
+     use_normalized_velocity_error: false
+     min_velocity_norm_for_error: 0.15
+     max_integrated_imu_speed: 2.0
+-    raw_imu_velocity_decay_tau: 8.0
++    raw_imu_velocity_decay_tau: 10.0
+     imu_velocity_decay_tau: 12.0
+     imu_velocity_odom_correction_tau: 4.0
+     imu_velocity_correction_gate: 1.2
+     alpha_rise_tau: 0.12
+-    alpha_fall_tau: 1.20
++    alpha_fall_tau: 0.45
+     disagreement_boost_enabled: false
+     disagreement_small: 0.75
+     disagreement_large: 1.05
+diff --git a/bumperbot_localization/bumperbot_localization/fuzzy_localization.py b/bumperbot_localization/bumperbot_localization/fuzzy_localization.py
+--- a/bumperbot_localization/bumperbot_localization/fuzzy_localization.py
++++ b/bumperbot_localization/bumperbot_localization/fuzzy_localization.py
+@@ -21,27 +21,27 @@
+         self.declare_parameter("imu_topic", "/imu_sim")
+         self.declare_parameter("output_topic", "/odometry/fuzzy_localization")
+         self.declare_parameter("frequency", 20.0)
+-        self.declare_parameter("small_error", 1.35)
+-        self.declare_parameter("large_error", 1.90)
++        self.declare_parameter("small_error", 0.35)
++        self.declare_parameter("large_error", 0.50)
+         self.declare_parameter("ann_weight_zero", 0.0)
+-        self.declare_parameter("ann_weight_small", 0.25)
++        self.declare_parameter("ann_weight_small", 0.45)
+         self.declare_parameter("ann_weight_large", 1.0)
+-        self.declare_parameter("adaptive_error_enabled", True)
++        self.declare_parameter("adaptive_error_enabled", False)
+         self.declare_parameter("adaptive_baseline_tau", 8.0)
+         self.declare_parameter("adaptive_min_baseline", 0.03)
+         self.declare_parameter("adaptive_min_odom_speed", 0.10)
+         self.declare_parameter("adaptive_freeze_after_sec", 42.0)
+-        self.declare_parameter("adaptive_deadband_ratio", 1.25)
++        self.declare_parameter("adaptive_deadband_ratio", 0.0)
+         self.declare_parameter("velocity_error_source", "corrected")
+         self.declare_parameter("use_normalized_velocity_error", False)
+         self.declare_parameter("min_velocity_norm_for_error", 0.15)
+         self.declare_parameter("max_integrated_imu_speed", 2.0)
+-        self.declare_parameter("raw_imu_velocity_decay_tau", 8.0)
++        self.declare_parameter("raw_imu_velocity_decay_tau", 10.0)
+         self.declare_parameter("imu_velocity_decay_tau", 12.0)
+         self.declare_parameter("imu_velocity_odom_correction_tau", 4.0)
+         self.declare_parameter("imu_velocity_correction_gate", 1.2)
+         self.declare_parameter("alpha_rise_tau", 0.12)
+-        self.declare_parameter("alpha_fall_tau", 1.20)
++        self.declare_parameter("alpha_fall_tau", 0.45)
+         self.declare_parameter("disagreement_boost_enabled", False)
+         self.declare_parameter("disagreement_small", 0.75)
+         self.declare_parameter("disagreement_large", 1.05)
