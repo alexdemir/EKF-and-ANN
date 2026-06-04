@@ -14,4 +14,4 @@ ekf_output_logger_node:
     complementary_topic: /odometry/kf_complementary
     final_topic: /odometry/fuzzy_localization
 
-    log_path: ~/bumperbot_ws/src/ekf_output_log.csv
+    log_path: /home/alex/EKF-and-ANN/src/ekf_output_log.csv

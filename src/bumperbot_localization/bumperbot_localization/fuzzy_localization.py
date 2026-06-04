@@ -17,6 +17,7 @@ class FuzzyLocalization(Node):
 
         self.declare_parameter("ann_topic", "/odometry/ann")
         self.declare_parameter("kf2_topic", "/odometry/kf_gps_odom")
+        self.declare_parameter("gps_hold_topic", "/odometry/gps_hold")
         self.declare_parameter("odom_topic", "/bumperbot_controller/odom_noisy")
         self.declare_parameter("imu_topic", "/imu_sim")
         self.declare_parameter("output_topic", "/odometry/fuzzy_localization")
@@ -26,6 +27,8 @@ class FuzzyLocalization(Node):
         self.declare_parameter("ann_weight_zero", 0.0)
         self.declare_parameter("ann_weight_small", 0.35)
         self.declare_parameter("ann_weight_large", 1.0)
+        self.declare_parameter("defuzzification_method", "weighted_average")
+        self.declare_parameter("cog_resolution", 201)
         self.declare_parameter("adaptive_error_enabled", True)
         self.declare_parameter("adaptive_error_mode", "excess")
         self.declare_parameter("adaptive_baseline_tau", 5.0)
@@ -48,11 +51,26 @@ class FuzzyLocalization(Node):
         self.declare_parameter("slip_latch_release_error", 0.02)
         self.declare_parameter("slip_latch_hold_sec", 35.0)
         self.declare_parameter("slip_latch_ann_weight", 0.0)
+        self.declare_parameter("slip_latch_alpha_cap_enabled", True)
+        self.declare_parameter("slip_latch_alpha_cap", 0.25)
+        self.declare_parameter("slip_latch_force_ann_enabled", False)
+        self.declare_parameter("slip_latch_force_ann_alpha", 1.0)
+        self.declare_parameter("slip_latch_force_ann_requires_gps_unreliable", True)
         self.declare_parameter("severe_slip_boost_enabled", True)
         self.declare_parameter("severe_slip_disagreement", 3.0)
         self.declare_parameter("severe_slip_disagreement_rate", 0.25)
         self.declare_parameter("severe_slip_min_fuzzy_error", 0.0)
         self.declare_parameter("severe_slip_ann_weight", 0.95)
+        self.declare_parameter("severe_slip_boost_requires_gps_unreliable", True)
+        self.declare_parameter("gps_trust_gate_enabled", True)
+        self.declare_parameter("gps_hold_unreliable_variance_threshold", 5.0)
+        self.declare_parameter("gps_unreliable_hold_sec", 2.0)
+        self.declare_parameter("gps_reliable_alpha_cap_enabled", True)
+        self.declare_parameter("gps_reliable_alpha_cap", 0.0)
+        self.declare_parameter("gps_reliable_selector_enabled", True)
+        self.declare_parameter("gps_reliable_selector_margin", 0.05)
+        self.declare_parameter("gps_reliable_selector_ann_alpha", 1.0)
+        self.declare_parameter("gps_reliable_selector_tie_alpha_cap", 0.25)
         self.declare_parameter("disagreement_boost_enabled", False)
         self.declare_parameter("disagreement_small", 0.75)
         self.declare_parameter("disagreement_large", 1.05)
@@ -63,6 +81,7 @@ class FuzzyLocalization(Node):
 
         self.ann_topic = self.get_parameter("ann_topic").value
         self.kf2_topic = self.get_parameter("kf2_topic").value
+        self.gps_hold_topic = self.get_parameter("gps_hold_topic").value
         self.odom_topic = self.get_parameter("odom_topic").value
         self.imu_topic = self.get_parameter("imu_topic").value
         self.output_topic = self.get_parameter("output_topic").value
@@ -72,6 +91,15 @@ class FuzzyLocalization(Node):
         self.ann_weight_zero = float(self.get_parameter("ann_weight_zero").value)
         self.ann_weight_small = float(self.get_parameter("ann_weight_small").value)
         self.ann_weight_large = float(self.get_parameter("ann_weight_large").value)
+        self.defuzzification_method = str(
+            self.get_parameter("defuzzification_method").value
+        ).strip().lower()
+        if self.defuzzification_method not in ("weighted_average", "mamdani_cog"):
+            self.get_logger().warn(
+                "defuzzification_method must be weighted_average or mamdani_cog; using weighted_average"
+            )
+            self.defuzzification_method = "weighted_average"
+        self.cog_resolution = max(11, int(self.get_parameter("cog_resolution").value))
         self.adaptive_error_enabled = bool(
             self.get_parameter("adaptive_error_enabled").value
         )
@@ -140,6 +168,21 @@ class FuzzyLocalization(Node):
         self.slip_latch_ann_weight = float(
             self.get_parameter("slip_latch_ann_weight").value
         )
+        self.slip_latch_alpha_cap_enabled = bool(
+            self.get_parameter("slip_latch_alpha_cap_enabled").value
+        )
+        self.slip_latch_alpha_cap = float(
+            self.get_parameter("slip_latch_alpha_cap").value
+        )
+        self.slip_latch_force_ann_enabled = bool(
+            self.get_parameter("slip_latch_force_ann_enabled").value
+        )
+        self.slip_latch_force_ann_alpha = float(
+            self.get_parameter("slip_latch_force_ann_alpha").value
+        )
+        self.slip_latch_force_ann_requires_gps_unreliable = bool(
+            self.get_parameter("slip_latch_force_ann_requires_gps_unreliable").value
+        )
         self.severe_slip_boost_enabled = bool(
             self.get_parameter("severe_slip_boost_enabled").value
         )
@@ -155,6 +198,36 @@ class FuzzyLocalization(Node):
         self.severe_slip_ann_weight = float(
             self.get_parameter("severe_slip_ann_weight").value
         )
+        self.severe_slip_boost_requires_gps_unreliable = bool(
+            self.get_parameter("severe_slip_boost_requires_gps_unreliable").value
+        )
+        self.gps_trust_gate_enabled = bool(
+            self.get_parameter("gps_trust_gate_enabled").value
+        )
+        self.gps_hold_unreliable_variance_threshold = float(
+            self.get_parameter("gps_hold_unreliable_variance_threshold").value
+        )
+        self.gps_unreliable_hold_sec = float(
+            self.get_parameter("gps_unreliable_hold_sec").value
+        )
+        self.gps_reliable_alpha_cap_enabled = bool(
+            self.get_parameter("gps_reliable_alpha_cap_enabled").value
+        )
+        self.gps_reliable_alpha_cap = float(
+            self.get_parameter("gps_reliable_alpha_cap").value
+        )
+        self.gps_reliable_selector_enabled = bool(
+            self.get_parameter("gps_reliable_selector_enabled").value
+        )
+        self.gps_reliable_selector_margin = float(
+            self.get_parameter("gps_reliable_selector_margin").value
+        )
+        self.gps_reliable_selector_ann_alpha = float(
+            self.get_parameter("gps_reliable_selector_ann_alpha").value
+        )
+        self.gps_reliable_selector_tie_alpha_cap = float(
+            self.get_parameter("gps_reliable_selector_tie_alpha_cap").value
+        )
         self.disagreement_boost_enabled = bool(
             self.get_parameter("disagreement_boost_enabled").value
         )
@@ -169,6 +242,7 @@ class FuzzyLocalization(Node):
 
         self.latest_ann = None
         self.latest_kf2 = None
+        self.latest_gps_hold = None
         self.latest_odom = None
         self.latest_imu = None
         self.last_imu_stamp = None
@@ -186,12 +260,14 @@ class FuzzyLocalization(Node):
         self.severe_slip_boost_active = False
         self.last_disagreement_stamp = None
         self.last_ann_kf2_disagreement = None
+        self.last_gps_unreliable_stamp = -math.inf
 
         self.log_file = None
         self.log_writer = None
 
         self.create_subscription(Odometry, self.ann_topic, self.ann_callback, 20)
         self.create_subscription(Odometry, self.kf2_topic, self.kf2_callback, 20)
+        self.create_subscription(Odometry, self.gps_hold_topic, self.gps_hold_callback, 20)
         self.create_subscription(Odometry, self.odom_topic, self.odom_callback, 20)
         self.create_subscription(Imu, self.imu_topic, self.imu_callback, 50)
         self.publisher = self.create_publisher(Odometry, self.output_topic, 10)
@@ -204,6 +280,8 @@ class FuzzyLocalization(Node):
             f"adaptive_error_enabled={self.adaptive_error_enabled}, "
             f"adaptive_error_mode={self.adaptive_error_mode}, "
             f"slip_latch_enabled={self.slip_latch_enabled}, "
+            f"slip_latch_force_ann_enabled={self.slip_latch_force_ann_enabled}, "
+            f"gps_trust_gate_enabled={self.gps_trust_gate_enabled}, "
             f"severe_slip_boost_enabled={self.severe_slip_boost_enabled}, "
             f"disagreement_boost_enabled={self.disagreement_boost_enabled}"
         )
@@ -213,6 +291,11 @@ class FuzzyLocalization(Node):
 
     def kf2_callback(self, msg):
         self.latest_kf2 = msg
+
+    def gps_hold_callback(self, msg):
+        self.latest_gps_hold = msg
+        if self.gps_hold_variance(msg) >= self.gps_hold_unreliable_variance_threshold:
+            self.last_gps_unreliable_stamp = self.stamp_to_seconds(msg.header.stamp)
 
     def odom_callback(self, msg):
         self.latest_odom = msg
@@ -307,6 +390,22 @@ class FuzzyLocalization(Node):
             ann_kf2_disagreement,
             ann_kf2_disagreement_rate,
         )
+        gps_hold_variance = self.gps_hold_variance(self.latest_gps_hold)
+        gps_unreliable = self.is_gps_unreliable(gps_hold_variance)
+        gps_ann_distance, gps_kf2_distance = self.gps_consistency_distances(
+            ann_xy,
+            kf2_xy,
+        )
+        if (
+            self.slip_latch_force_ann_requires_gps_unreliable
+            and not gps_unreliable
+        ):
+            slip_latch_alpha = 0.0
+        if (
+            self.severe_slip_boost_requires_gps_unreliable
+            and not gps_unreliable
+        ):
+            severe_slip_boost = 0.0
         alpha_target = max(alpha_target, slip_latch_alpha)
         alpha_target = max(alpha_target, severe_slip_boost)
         disagreement_boost = self.disagreement_boost(
@@ -315,6 +414,31 @@ class FuzzyLocalization(Node):
         )
         alpha_target = max(alpha_target, disagreement_boost)
         alpha_ann = self.filtered_alpha(alpha_target)
+        if (
+            self.slip_latch_active
+            and self.slip_latch_force_ann_enabled
+            and (
+                not self.slip_latch_force_ann_requires_gps_unreliable
+                or gps_unreliable
+            )
+        ):
+            alpha_ann = self.clamp01(self.slip_latch_force_ann_alpha)
+            self.alpha_ann_filtered = alpha_ann
+        elif self.slip_latch_active and self.slip_latch_alpha_cap_enabled:
+            alpha_cap = self.clamp01(self.slip_latch_alpha_cap)
+            alpha_ann = min(alpha_ann, alpha_cap)
+            self.alpha_ann_filtered = alpha_ann
+        if (
+            self.gps_trust_gate_enabled
+            and self.gps_reliable_alpha_cap_enabled
+            and not gps_unreliable
+        ):
+            alpha_ann = self.apply_gps_reliable_gate(
+                alpha_ann,
+                gps_ann_distance,
+                gps_kf2_distance,
+            )
+            self.alpha_ann_filtered = alpha_ann
         alpha_kf2 = 1.0 - alpha_ann
         output_xy = alpha_ann * ann_xy + alpha_kf2 * kf2_xy
 
@@ -342,6 +466,10 @@ class FuzzyLocalization(Node):
             odom_body_velocity,
             imu_body_velocity_raw,
             imu_body_velocity,
+            gps_hold_variance,
+            gps_unreliable,
+            gps_ann_distance,
+            gps_kf2_distance,
         )
 
     def update_velocity_error_baseline(self, velocity_error, odom_speed):
@@ -568,6 +696,64 @@ class FuzzyLocalization(Node):
         large = max(self.disagreement_large, small + 1e-6)
         return self.clamp01((ann_kf2_disagreement - small) / (large - small))
 
+    def is_gps_unreliable(self, gps_hold_variance):
+        if not self.gps_trust_gate_enabled:
+            return True
+        if self.latest_gps_hold is None:
+            return True
+        if gps_hold_variance >= self.gps_hold_unreliable_variance_threshold:
+            return True
+        if self.gps_unreliable_hold_sec > 0.0:
+            elapsed = self.clock_seconds() - self.last_gps_unreliable_stamp
+            if 0.0 <= elapsed <= self.gps_unreliable_hold_sec:
+                return True
+        return False
+
+    @staticmethod
+    def gps_hold_variance(msg):
+        if msg is None:
+            return math.inf
+        cov_x = float(msg.pose.covariance[0])
+        cov_y = float(msg.pose.covariance[7])
+        if not math.isfinite(cov_x) or not math.isfinite(cov_y):
+            return math.inf
+        return 0.5 * (cov_x + cov_y)
+
+    def gps_consistency_distances(self, ann_xy, kf2_xy):
+        if self.latest_gps_hold is None:
+            return math.inf, math.inf
+        gps_xy = np.array([
+            self.latest_gps_hold.pose.pose.position.x,
+            self.latest_gps_hold.pose.pose.position.y,
+        ], dtype=float)
+        if not np.all(np.isfinite(gps_xy)):
+            return math.inf, math.inf
+        return (
+            float(np.linalg.norm(ann_xy - gps_xy)),
+            float(np.linalg.norm(kf2_xy - gps_xy)),
+        )
+
+    def apply_gps_reliable_gate(
+        self,
+        alpha_ann,
+        gps_ann_distance,
+        gps_kf2_distance,
+    ):
+        if not self.gps_reliable_selector_enabled:
+            return min(alpha_ann, self.clamp01(self.gps_reliable_alpha_cap))
+        if not (
+            math.isfinite(gps_ann_distance)
+            and math.isfinite(gps_kf2_distance)
+        ):
+            return min(alpha_ann, self.clamp01(self.gps_reliable_alpha_cap))
+
+        margin = max(self.gps_reliable_selector_margin, 0.0)
+        if gps_ann_distance + margin < gps_kf2_distance:
+            return max(alpha_ann, self.clamp01(self.gps_reliable_selector_ann_alpha))
+        if gps_kf2_distance + margin < gps_ann_distance:
+            return min(alpha_ann, self.clamp01(self.gps_reliable_alpha_cap))
+        return min(alpha_ann, self.clamp01(self.gps_reliable_selector_tie_alpha_cap))
+
     def fuzzy_ann_weight(self, velocity_error):
         small = max(self.small_error, 1e-6)
         large = max(self.large_error, small + 1e-6)
@@ -582,6 +768,9 @@ class FuzzyLocalization(Node):
         mu_small = max(0.0, min(1.0, mu_small))
         mu_large = max(0.0, min(1.0, (velocity_error - small) / (large - small)))
 
+        if self.defuzzification_method == "mamdani_cog":
+            return self.mamdani_cog_ann_weight(mu_zero, mu_small, mu_large)
+
         total = mu_zero + mu_small + mu_large
         if total <= 1e-9:
             return self.clamp01(self.ann_weight_small)
@@ -593,6 +782,61 @@ class FuzzyLocalization(Node):
                 + mu_large * self.ann_weight_large
             ) / total
         )
+
+    def mamdani_cog_ann_weight(self, mu_zero, mu_small, mu_large):
+        resolution = max(11, self.cog_resolution)
+        low_center = self.clamp01(self.ann_weight_zero)
+        medium_center = self.clamp01(self.ann_weight_small)
+        high_center = self.clamp01(self.ann_weight_large)
+
+        numerator = 0.0
+        denominator = 0.0
+        for i in range(resolution):
+            alpha = i / (resolution - 1)
+            low = self.left_shoulder(alpha, low_center, medium_center)
+            medium = self.triangle(alpha, low_center, medium_center, high_center)
+            high = self.right_shoulder(alpha, medium_center, high_center)
+            aggregated = max(
+                min(mu_zero, low),
+                min(mu_small, medium),
+                min(mu_large, high),
+            )
+            numerator += aggregated * alpha
+            denominator += aggregated
+
+        if denominator <= 1e-9:
+            return self.clamp01(self.ann_weight_small)
+        return self.clamp01(numerator / denominator)
+
+    @staticmethod
+    def triangle(value, left, center, right):
+        if value <= left or value >= right:
+            return 0.0
+        if value == center:
+            return 1.0
+        if value < center:
+            width = max(center - left, 1e-9)
+            return max(0.0, min(1.0, (value - left) / width))
+        width = max(right - center, 1e-9)
+        return max(0.0, min(1.0, (right - value) / width))
+
+    @staticmethod
+    def left_shoulder(value, left, right):
+        if value <= left:
+            return 1.0
+        if value >= right:
+            return 0.0
+        width = max(right - left, 1e-9)
+        return max(0.0, min(1.0, (right - value) / width))
+
+    @staticmethod
+    def right_shoulder(value, left, right):
+        if value <= left:
+            return 0.0
+        if value >= right:
+            return 1.0
+        width = max(right - left, 1e-9)
+        return max(0.0, min(1.0, (value - left) / width))
 
     def make_output_msg(self, xy, source):
         msg = Odometry()
@@ -651,6 +895,10 @@ class FuzzyLocalization(Node):
             "imu_raw_vy",
             "imu_vx",
             "imu_vy",
+            "gps_hold_variance",
+            "gps_unreliable",
+            "gps_ann_distance",
+            "gps_kf2_distance",
         ])
         self.log_file.flush()
 
@@ -677,6 +925,10 @@ class FuzzyLocalization(Node):
         odom_body_velocity,
         imu_body_velocity_raw,
         imu_body_velocity,
+        gps_hold_variance,
+        gps_unreliable,
+        gps_ann_distance,
+        gps_kf2_distance,
     ):
         if self.log_writer is None:
             return
@@ -711,6 +963,10 @@ class FuzzyLocalization(Node):
             f"{imu_body_velocity_raw[1]:.9f}",
             f"{imu_body_velocity[0]:.9f}",
             f"{imu_body_velocity[1]:.9f}",
+            f"{gps_hold_variance:.9f}",
+            str(bool(gps_unreliable)),
+            f"{gps_ann_distance:.9f}",
+            f"{gps_kf2_distance:.9f}",
         ])
         self.log_file.flush()
 

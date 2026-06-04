@@ -8,7 +8,7 @@ gps_hold_node:
     force_gps_dropout_after_sec: 15.0
     force_gps_dropout_duration_sec: 0.0
     forced_dropout_windows: ""
-    hold_position_variance: 0.25
+    hold_position_variance: 25.0
     publish_hold_once: true
     save_log: true
-    log_path: ~/bumperbot_ws/src/gps_hold_log.csv
+    log_path: /home/alex/EKF-and-ANN/src/gps_hold_log.csv

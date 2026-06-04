@@ -107,7 +107,7 @@ class ScriptedTrajectory(Node):
         self.waypoint_speed_scales = []
         self.current_waypoint_index = 0
         self.finished = False
-        self.start_time = self.clock_seconds()
+        self.start_time = None
         self.last_status_time = -999.0
         self.physical_slip_was_active = False
 
@@ -129,6 +129,7 @@ class ScriptedTrajectory(Node):
         self.latest_pose = (x, y, yaw)
         if self.origin is None:
             self.origin = self.latest_pose
+            self.start_time = self.clock_seconds()
             self.build_waypoints()
 
     def build_waypoints(self):
@@ -208,7 +209,7 @@ class ScriptedTrajectory(Node):
             self.publish_cmd(0.0, 0.0)
             return
 
-        if now - self.start_time < self.start_delay_sec:
+        if self.start_time is None or now - self.start_time < self.start_delay_sec:
             self.publish_cmd(0.0, 0.0)
             return
 
@@ -315,6 +316,8 @@ class ScriptedTrajectory(Node):
         return msg
 
     def is_physical_slip_active(self):
+        if self.start_time is None:
+            return False
         if self.physical_slip_start_sec < 0.0 or self.physical_slip_duration_sec <= 0.0:
             return False
         elapsed = self.clock_seconds() - self.start_time

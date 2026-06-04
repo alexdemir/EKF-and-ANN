@@ -267,13 +267,14 @@ class AnnPseudoGps(Node):
             self.gps_origin_xy = gps_xy.copy()
 
     def timer_callback(self):
+        now = self.clock_seconds()
+        if self.start_time is None:
+            self.start_time = now
+
         if self.latest_odom is None or self.latest_imu is None:
             return
 
         self.try_load_model()
-        now = self.clock_seconds()
-        if self.start_time is None:
-            self.start_time = now
         gps_available = self.is_gps_available(now)
 
         if gps_available and self.latest_gps is not None:

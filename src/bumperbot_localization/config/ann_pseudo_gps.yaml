@@ -14,7 +14,7 @@ ann_pseudo_gps_node:
     force_gps_dropout_duration_sec: 0.0
     forced_dropout_windows: ""
 
-    model_path: ~/bumperbot_ws/src/ann_model.npz
+    model_path: /home/alex/EKF-and-ANN/src/ann_model.npz
     ann_position_variance: 0.25
     fallback_position_variance: 4.0
     min_model_samples: 125
@@ -25,4 +25,4 @@ ann_pseudo_gps_node:
     fuzzy_ann_weight_small: 0.55
     fuzzy_ann_weight_large: 0.85
     save_log: true
-    log_path: ~/bumperbot_ws/src/ann_pseudo_gps_log.csv
+    log_path: /home/alex/EKF-and-ANN/src/ann_pseudo_gps_log.csv

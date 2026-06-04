@@ -25,11 +25,11 @@ ann_trainer_node:
     batch_size: 32
     buffer_size: 3500
     save_dataset: true
-    dataset_path: ~/bumperbot_ws/src/ann_training_dataset.csv
-    model_path: ~/bumperbot_ws/src/ann_model.npz
+    dataset_path: /home/alex/EKF-and-ANN/src/ann_training_dataset.csv
+    model_path: /home/alex/EKF-and-ANN/src/ann_model.npz
     save_model_every_samples: 20
     load_existing_model: true
-    initial_model_path: ~/bumperbot_ws/src/ann_model.npz
+    initial_model_path: /home/alex/EKF-and-ANN/src/ann_model.npz
     pause_training_on_slip: false
     slip_training_error_threshold: 1.60
     slip_training_min_odom_speed: 0.10

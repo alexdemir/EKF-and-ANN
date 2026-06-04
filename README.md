@@ -1,325 +1,170 @@
-# EKF-ANN-FLS Localization for a Mobile Robot
+# EKF-and-ANN: GPS/INS/Odometry Localization with ANN and Fuzzy Fusion
 
-This repository contains a ROS 2 and Gazebo based localization framework for a differential-drive mobile robot. The project investigates how GPS, IMU, wheel odometry, Kalman filtering, an Artificial Neural Network (ANN), and a Fuzzy Logic System (FLS) can be combined to improve localization when GPS becomes unavailable and wheel odometry becomes unreliable because of slip.
+This repository contains a ROS 2 Humble and Gazebo localization project for a
+differential-drive mobile robot. The work reproduces the main ANN + Kalman
+filter + fuzzy logic localization idea from the reference paper, then extends it
+with a GPS-gated fuzzy fusion strategy for wheel-slip and GPS-dropout cases.
 
-The implementation is based on the localization methodology proposed in the GPS/INS/odometer information-fusion literature. The main idea is simple:
+## Goal
 
-1. While GPS is available, use GPS-aided Kalman filters to produce a reliable reference position.
-2. Train an ANN using only IMU and odometry based inputs, with the GPS-aided fused position as the target.
-3. When GPS is lost, use the trained ANN as a pseudo-GPS sensor.
-4. When wheel slip occurs, use an FLS to decide how much to trust the ANN and how much to trust the odometry-based Kalman filter.
+The localization problem is tested under two difficult conditions:
 
-The final system does not assume that the ANN is always better than odometry. Instead, it uses each estimator where it is strongest:
+- GPS dropout: the robot temporarily loses live GPS correction.
+- Wheel slip: the wheel odometry reports motion while the simulated robot body
+  is stopped or moving less than expected.
 
-- In normal no-slip motion, odometry and KF-2 are usually more accurate.
-- During slip, odometry becomes biased and KF-2 drifts.
-- In slip conditions, the ANN becomes useful because it is not only following raw wheel displacement.
-- The FLS dynamically blends ANN and KF-2 according to the detected motion inconsistency.
+The system compares four estimates:
 
-## Table of Contents
+- **KF2**: GPS/held-GPS + wheel odometry Kalman filter.
+- **ANN**: learned pseudo-GPS estimate from IMU and odometry features.
+- **Paper-style FLS**: single-input fuzzy logic system using the odometry/IMU
+  velocity mismatch.
+- **Proposed GPS-gated FLS**: fuzzy fusion extended with GPS reliability,
+  ANN-vs-GPS consistency, KF2-vs-GPS consistency, and slip-state gating.
 
-- [Project Motivation](#project-motivation)
-- [Methodology](#methodology)
-- [ROS 2 System Architecture](#ros-2-system-architecture)
-- [Main Packages and Files](#main-packages-and-files)
-- [ANN Training Pipeline](#ann-training-pipeline)
-- [GPS Dropout and Pseudo-GPS Pipeline](#gps-dropout-and-pseudo-gps-pipeline)
-- [Fuzzy Logic Fusion](#fuzzy-logic-fusion)
-- [Build Instructions](#build-instructions)
-- [Training Instructions](#training-instructions)
-- [Testing Instructions](#testing-instructions)
-- [Generated Logs](#generated-logs)
-- [Experimental Results](#experimental-results)
-- [Interpretation of Results](#interpretation-of-results)
-- [Final Artifact Organization](#final-artifact-organization)
+## Method Summary
 
-## Project Motivation
+### Paper-Style Reproduction
 
-Outdoor mobile robots often rely on GPS for global position correction. However, GPS is not always available. A robot may enter an indoor area, pass through a GPS-denied region, or experience temporary signal degradation. In those cases, localization must continue using proprioceptive sensors such as the IMU and wheel odometry.
-
-Wheel odometry alone is not enough because its error accumulates over time. The problem becomes more severe when the wheels slip. During slip, the wheel encoders can report motion that does not match the actual robot displacement. As a result, an odometry-based filter may drift quickly.
-
-This project studies a hybrid solution:
-
-- Kalman filters provide reliable localization while GPS is available.
-- An ANN learns the nonlinear relation between IMU/odometry signals and the GPS-aided reference position.
-- During GPS outage, the ANN provides a pseudo-GPS estimate.
-- An FLS monitors motion inconsistency and blends ANN with the odometry-based Kalman filter.
-
-## Methodology
-
-The system follows the main structure of the reference paper.
-
-### 1. GPS-Aided Localization While GPS Is Available
-
-When GPS is available, two Kalman-filter-based localization streams run in parallel:
-
-- **KF-1: GPS + IMU**
-  - Uses GPS and IMU information.
-  - Represents the GPS/INS side of the methodology.
-
-- **KF-2: GPS + odometry**
-  - Uses GPS or held GPS and wheel odometry.
-  - Represents the GPS/odometer side of the methodology.
-
-The outputs of these filters are combined by a complementary filter:
+The reproduced fuzzy logic system follows the paper structure:
 
 ```text
-x_kfc, y_kfc = complementary(KF-1, KF-2)
+input:  |v_odom - v_imu|
+output: alpha_ann
+
+final_position = alpha_ann * ANN + (1 - alpha_ann) * KF2
 ```
 
-This complementary output is used as the ANN target during training.
+For paper-comparison runs, the implementation uses:
 
-### 2. ANN Training
+- raw odometry/IMU velocity error,
+- triangular membership functions,
+- Mamdani-style center-of-gravity defuzzification,
+- no GPS gate,
+- no slip latch,
+- no severe-slip boost,
+- no adaptive velocity correction.
 
-The ANN is trained while GPS is available. GPS is not used as an ANN input. This is important because the ANN must be able to operate when GPS is lost.
+### Proposed GPS-Gated FLS
 
-The ANN input vector is built from IMU and odometry information. The target is the GPS-aided complementary filter output:
+The proposed method keeps the fuzzy ANN/KF2 fusion, but adds a supervisory gate:
 
 ```text
-ANN input  = IMU + odometry features
-ANN target = complementary GPS-aided position
+1. Compute fuzzy alpha from odometry/IMU velocity mismatch.
+2. Check GPS-hold covariance to decide whether GPS is reliable.
+3. If GPS is reliable, compare ANN and KF2 distance to GPS.
+4. If GPS is unreliable and slip is active, allow ANN to dominate.
+5. Publish the fused ANN/KF2 position.
 ```
 
-The final model used in the experiments has the following properties:
+This does **not** replace the final output with raw GPS. GPS is used as a
+reliability reference when it is available. During GPS dropout, the ANN remains
+important because it acts as the pseudo-GPS source when odometry/KF2 can drift.
 
-```text
-Architecture: 15 input neurons, 10 hidden neurons, 5 hidden neurons, 2 output neurons
-Activation: log-sigmoid hidden layers, linear output layer
-Target mode: absolute position
-Input normalization: standard normalization
-Saved model: ann_model.npz
-```
-
-### 3. GPS Dropout
-
-During forced or natural GPS dropout:
-
-- GPS is no longer trusted.
-- The ANN pseudo-GPS node switches from GPS output to ANN output.
-- The saved ANN model estimates position from IMU and odometry features.
-- The output is published as `/odometry/gps_or_ann`.
-
-### 4. Fuzzy Logic Fusion During Slip
-
-The FLS combines ANN and KF-2:
-
-```text
-final_position = alpha_ann * ANN_position + alpha_kf2 * KF2_position
-```
-
-The FLS uses the velocity inconsistency between IMU-derived motion and odometry motion as the slip indicator.
-
-Expected behavior:
-
-- If there is no slip, odometry is reliable, so `alpha_kf2` should be high.
-- If slip increases, odometry becomes unreliable, so `alpha_ann` should increase.
-
-## ROS 2 System Architecture
+## ROS 2 Architecture
 
 ```mermaid
 flowchart LR
-    GPS["GPS odometry<br>/odometry/gps_sim"] --> KF1["KF-1<br>GPS + IMU"]
-    IMU["IMU<br>/imu_sim"] --> KF1
+    GPS["GPS /gps/fix"] --> GPSH["GPS hold"]
+    GPSH --> KF2["KF2: GPS/held GPS + odometry"]
+    ODOM["Noisy odometry"] --> KF2
 
-    GPS --> GPSHOLD["GPS hold<br>last GPS after dropout"]
-    GPSHOLD --> KF2["KF-2<br>GPS/held GPS + odometry"]
-    ODOM["Noisy odometry<br>/bumperbot_controller/odom_noisy"] --> KF2
-
-    KF1 --> CF["Complementary filter<br>/odometry/kf_complementary"]
+    GPS --> KF1["KF1: GPS + IMU"]
+    IMU["IMU"] --> KF1
+    KF1 --> CF["Complementary target"]
     KF2 --> CF
 
-    IMU --> TRAIN["ANN trainer"]
-    ODOM --> TRAIN
-    CF --> TRAIN
-    TRAIN --> MODEL["Saved ANN model<br>ann_model.npz"]
+    IMU --> ANNTRAIN["ANN trainer"]
+    ODOM --> ANNTRAIN
+    CF --> ANNTRAIN
+    ANNTRAIN --> MODEL["ann_model.npz"]
 
-    MODEL --> PSEUDO["ANN pseudo-GPS<br>/odometry/gps_or_ann"]
-    IMU --> PSEUDO
-    ODOM --> PSEUDO
-    GPS --> PSEUDO
-
-    PSEUDO --> FLS["Fuzzy localization<br>ANN + KF-2"]
+    MODEL --> ANN["ANN pseudo-GPS"]
+    IMU --> ANN
+    ODOM --> ANN
+    GPSH --> FLS["Fuzzy localization"]
+    ANN --> FLS
     KF2 --> FLS
-    FLS --> FINAL["Final fused localization"]
+    FLS --> FINAL["Final localization"]
 ```
 
-## Main Packages and Files
+## Main Files
 
 ```text
 src/
-  bumperbot_controller/
-    launch/
-      controller.launch.py
-    bumperbot_controller/
-      noisy_controller.py
+  ann_model.npz
+  ann_training_dataset.csv
 
-  bumperbot_description/
-    urdf/
-    worlds/
+  bumperbot_controller/
+    launch/controller.launch.py
+    bumperbot_controller/noisy_controller.py
+    bumperbot_controller/scripted_trajectory.py
 
   bumperbot_localization/
-    launch/
-      local_localization.launch.py
-    config/
-      ann_trainer.yaml
-      ann_pseudo_gps.yaml
-      fuzzy_localization.yaml
-      gps_hold.yaml
-      ekf_gps_imu.yaml
-      ekf_gps_odom.yaml
-      complementary_filter.yaml
-      ekf_output_logger.yaml
-    bumperbot_localization/
-      ann_trainer.py
-      fit_ann_model.py
-      ann_pseudo_gps.py
-      fuzzy_localization.py
-      gps_hold.py
-      ekf_output_logger.py
+    launch/local_localization.launch.py
+    config/ann_pseudo_gps.yaml
+    config/ann_trainer.yaml
+    config/fuzzy_localization.yaml
+    config/gps_hold.yaml
+    config/ekf_output_logger.yaml
+    bumperbot_localization/ann_pseudo_gps.py
+    bumperbot_localization/ann_trainer.py
+    bumperbot_localization/fit_ann_model.py
+    bumperbot_localization/fuzzy_localization.py
+    bumperbot_localization/gps_hold.py
+    bumperbot_localization/ekf_output_logger.py
+
+test_results/fls_compare_20260604/summary.md
 ```
 
-### Important Nodes
+## Current ANN Model
 
-| Node | File | Purpose |
-|---|---|---|
-| ANN trainer | `ann_trainer.py` | Collects training samples and optionally fine-tunes an existing model |
-| Offline ANN fitter | `fit_ann_model.py` | Trains an ANN model from a saved CSV dataset |
-| ANN pseudo-GPS | `ann_pseudo_gps.py` | Publishes GPS while available and ANN pseudo-GPS after dropout |
-| GPS hold | `gps_hold.py` | Holds the last GPS position after dropout for KF-2 |
-| Fuzzy localization | `fuzzy_localization.py` | Blends ANN and KF-2 using fuzzy weights |
-| EKF output logger | `ekf_output_logger.py` | Logs KF2, ANN, odometry, GPS, and final outputs |
-| Noisy controller | `noisy_controller.py` | Publishes noisy odometry and can simulate wheel slip |
-
-## ANN Training Pipeline
-
-The training pipeline has two modes:
-
-1. Online sample collection with `ann_trainer.py`.
-2. Offline model fitting with `fit_ann_model.py`.
-
-### Online Dataset Collection
-
-The trainer collects samples only while GPS is available. If forced dropout starts, the trainer stops collecting samples. This prevents the model from learning from GPS-denied data where the target is no longer GPS-corrected.
-
-The dataset is saved to:
+The active ANN model is stored at:
 
 ```text
-~/bumperbot_ws/src/ann_training_dataset.csv
+src/ann_model.npz
 ```
 
-The active model is saved to:
+Observed metadata from the final runs:
 
 ```text
-~/bumperbot_ws/src/ann_model.npz
-```
-
-### Offline ANN Fitting
-
-The offline fitter trains the model from the CSV dataset. The final successful configuration used:
-
-```text
+samples: 1545
 target_mode: absolute
+activation: logsig
+input_frame: world
 input_normalization: standard
-validation_mode: shuffle
+sha256 prefix: 7e8705aca4b2
 ```
 
-The final model metadata observed during tests:
+## Build
 
-```text
-samples: 1183
-target_mode: absolute
-input_normalization: standard
-sha256 prefix: 31c1594f7caa
-```
-
-## GPS Dropout and Pseudo-GPS Pipeline
-
-The ANN pseudo-GPS node publishes GPS when it is available. After timeout or forced dropout, it switches to the saved ANN model.
-
-Important behavior:
-
-- Output topic: `/odometry/gps_or_ann`
-- Debug topic: `/odometry/ann`
-- Log file: `~/bumperbot_ws/src/ann_pseudo_gps_log.csv`
-- Existing logs are protected by backup files named `ann_pseudo_gps_log.previous_<run_id>.csv`.
-- Each log row stores the model hash and run ID to detect accidental model or node changes.
-
-## Fuzzy Logic Fusion
-
-The FLS is used because ANN and KF-2 are not equally reliable under all conditions.
-
-### No-Slip Case
-
-When there is no wheel slip, odometry remains reliable. In this case, KF-2 is usually better than the ANN because it uses direct wheel motion and the last GPS reference.
-
-Expected FLS behavior:
-
-```text
-low velocity inconsistency -> high KF2 weight -> low ANN weight
-```
-
-### Slip Case
-
-When slip occurs, the odometry reports motion that does not fully match the actual robot displacement. KF-2 begins to drift. In this case, the ANN becomes more useful.
-
-Expected FLS behavior:
-
-```text
-high velocity inconsistency -> high ANN weight -> low KF2 weight
-```
-
-This is consistent with the reference paper: FLS does not simply replace KF-2 with ANN. It dynamically blends them.
-
-## Build Instructions
+From the repository root:
 
 ```bash
-cd ~/bumperbot_ws
 colcon build --packages-select bumperbot_controller bumperbot_description bumperbot_localization
 source install/setup.bash
 ```
 
-If Python executables are not marked as executable:
+## Training
 
-```bash
-chmod +x ~/bumperbot_ws/src/bumperbot_localization/bumperbot_localization/ann_trainer.py
-chmod +x ~/bumperbot_ws/src/bumperbot_localization/bumperbot_localization/ann_pseudo_gps.py
-chmod +x ~/bumperbot_ws/src/bumperbot_localization/bumperbot_localization/fit_ann_model.py
-chmod +x ~/bumperbot_ws/src/bumperbot_controller/bumperbot_controller/noisy_controller.py
-```
-
-## Training Instructions
-
-Start localization with ANN training enabled:
+Collect ANN training samples:
 
 ```bash
 ros2 launch bumperbot_localization local_localization.launch.py \
   run_ann_pseudo:=false \
   run_ann_trainer:=true \
   run_ekf_logger:=false \
-  ann_force_gps_dropout_after_sec:=-1.0
+  ann_forced_dropout_windows:= \
+  ann_force_gps_dropout_after_sec:=-1.0 \
+  ann_force_gps_dropout_duration_sec:=0.0
 ```
 
-Start the controller:
-
-```bash
-ros2 launch bumperbot_controller controller.launch.py
-```
-
-Recommended training route:
-
-- Drive while GPS is available.
-- Include repeated 3x3 square laps.
-- Include forward and reverse direction if needed.
-- Include straight segments, turns, and different speeds.
-- Avoid training after forced GPS dropout.
-
-Fit the model offline:
+Fit the ANN model offline:
 
 ```bash
 ros2 run bumperbot_localization fit_ann_model.py \
-  --dataset ~/bumperbot_ws/src/ann_training_dataset.csv \
-  --model ~/bumperbot_ws/src/ann_model.npz \
+  --dataset src/ann_training_dataset.csv \
+  --model src/ann_model.npz \
   --iterations 3000 \
   --restarts 4 \
   --validation-fraction 0.20 \
@@ -328,18 +173,17 @@ ros2 run bumperbot_localization fit_ann_model.py \
   --target-mode absolute
 ```
 
-## Testing Instructions
+## Final Comparison Test
 
-Before each clean test, remove active logs:
+The final comparison uses the scripted route:
 
-```bash
-rm -f ~/bumperbot_ws/src/ann_pseudo_gps_log*.csv \
-      ~/bumperbot_ws/src/ekf_output_log.csv \
-      ~/bumperbot_ws/src/fuzzy_localization_log.csv \
-      ~/bumperbot_ws/src/gps_hold_log.csv
+```text
+profile: paper_mismatch_waypoint
+GPS dropout windows: 18:8,34:14,54:12
+wheel slip: physical body stopped, wheel odometry scaled by 2.5x
+short route: 1 lap
+long route: 2 laps
 ```
-
-### No-Slip GPS Dropout Test
 
 Run localization:
 
@@ -348,181 +192,87 @@ ros2 launch bumperbot_localization local_localization.launch.py \
   run_ann_pseudo:=true \
   run_ann_trainer:=false \
   run_ekf_logger:=true \
-  ann_force_gps_dropout_after_sec:=45.0 \
+  ann_forced_dropout_windows:=18:8,34:14,54:12 \
+  ann_force_gps_dropout_after_sec:=-1.0 \
   ann_force_gps_dropout_duration_sec:=0.0
 ```
 
-Run the controller without slip:
-
-```bash
-ros2 launch bumperbot_controller controller.launch.py
-```
-
-Drive the robot from the beginning of the test. Do not wait until GPS dropout to start moving. Continue driving after GPS dropout.
-
-### Slip Test
-
-Run localization:
-
-```bash
-ros2 launch bumperbot_localization local_localization.launch.py \
-  run_ann_pseudo:=true \
-  run_ann_trainer:=false \
-  run_ekf_logger:=true \
-  ann_force_gps_dropout_after_sec:=45.0 \
-  ann_force_gps_dropout_duration_sec:=0.0
-```
-
-Run the controller with simulated slip:
+Run the scripted controller:
 
 ```bash
 ros2 launch bumperbot_controller controller.launch.py \
-  slip_start_sec:=55.0 \
-  slip_duration_sec:=60.0 \
-  slip_linear_scale:=1.35 \
-  slip_angular_scale:=1.20
+  run_scripted_trajectory:=true \
+  scripted_trajectory_profile:=paper_mismatch_waypoint \
+  scripted_speed_scale:=1.0 \
+  scripted_laps:=2 \
+  paper_slip_mode:=true \
+  scripted_physical_slip_start_sec:=38.0 \
+  scripted_physical_slip_duration_sec:=18.0 \
+  scripted_physical_slip_linear_scale:=0.0 \
+  scripted_physical_slip_angular_scale:=0.0 \
+  slip_start_sec:=38.0 \
+  slip_duration_sec:=18.0 \
+  slip_linear_scale:=2.5 \
+  slip_angular_scale:=2.5
 ```
 
-Recommended test procedure:
+Set `scripted_laps:=1` for the short route.
 
-1. Start driving immediately.
-2. Drive normally while GPS is available.
-3. GPS dropout starts at approximately 45 seconds.
-4. Slip starts at approximately 55 seconds.
-5. Continue driving for about two laps after slip starts.
-6. Stop both terminals with `Ctrl+C`.
+## Results
 
-## Generated Logs
+All values are RMSE in meters. The complete table is stored in
+[`test_results/fls_compare_20260604/summary.md`](test_results/fls_compare_20260604/summary.md).
 
-The main logs are:
-
-```text
-~/bumperbot_ws/src/ann_pseudo_gps_log.csv
-~/bumperbot_ws/src/ekf_output_log.csv
-~/bumperbot_ws/src/fuzzy_localization_log.csv
-~/bumperbot_ws/src/gps_hold_log.csv
-~/bumperbot_ws/src/ann_training_dataset.csv
-```
-
-Useful checks:
-
-```bash
-ros2 node list | grep -E "ann_pseudo|ann_trainer|ekf_output|fuzzy|gps_hold"
-
-ls -lh ~/bumperbot_ws/src/ann_pseudo_gps_log*.csv \
-       ~/bumperbot_ws/src/ekf_output_log.csv \
-       ~/bumperbot_ws/src/fuzzy_localization_log.csv \
-       ~/bumperbot_ws/src/gps_hold_log.csv
-
-tail -n 5 ~/bumperbot_ws/src/ann_pseudo_gps_log.csv
-```
-
-## Experimental Results
-
-The following results are from the final clean evaluation runs.
-
-### No-Slip GPS Dropout
-
-In the no-slip test, odometry is reliable. Therefore, KF-2 is expected to be more accurate than ANN. The FLS should give most of the weight to KF-2.
-
-| Test window | KF2 / Odom RMSE | ANN RMSE | FLS RMSE | Result |
-|---|---:|---:|---:|---|
-| GPS dropout, no slip | 0.148 m | 0.453 m | 0.179 m | KF2 is best; FLS stays close to KF2 |
-
-Average FLS weights:
-
-| alpha_ann | alpha_kf2 |
-|---:|---:|
-| 0.012 | 0.988 |
-
-This is the desired behavior. In no-slip motion, ANN is not expected to outperform KF-2.
-
-### Slip During GPS Dropout
-
-In the slip test, odometry becomes unreliable. KF-2 accumulates error, and the ANN becomes more useful.
-
-| Test window | KF2 / Odom RMSE | ANN RMSE | FLS RMSE | ANN improvement over KF2 |
+| Test | KF2 | ANN | FLS | Odom |
 |---|---:|---:|---:|---:|
-| GPS dropout period | 1.897 m | 1.405 m | 1.308 m | 26.0% |
-| Slip period | 2.225 m | 1.554 m | 1.532 m | 30.2% |
-| Early slip | 1.237 m | 1.262 m | 1.107 m | -2.0% |
-| Longer slip | 2.650 m | 1.707 m | 1.740 m | 35.6% |
+| Paper-COG short overall | 2.1676 | 0.8849 | 0.9282 | 5.6566 |
+| Paper-COG long overall | 2.3172 | 2.2475 | 2.0707 | 8.7293 |
+| GPS-gated short overall | 3.3663 | 0.8989 | 0.4838 | 5.6639 |
+| GPS-gated long overall | 1.2691 | 2.1877 | 0.7373 | 8.7344 |
 
-Observed behavior:
+Slip-window RMSE:
 
-- In no-slip motion, KF-2 remains the most accurate estimator.
-- In slip motion, ANN outperforms KF-2.
-- As slip accumulates, the ANN advantage becomes stronger.
-- FLS improves the combined result in the full dropout and full slip windows.
-- In longer slip, ANN alone was slightly better than FLS, which indicates that FLS weights can still be tuned further.
+| Test | KF2 | ANN | FLS | Odom |
+|---|---:|---:|---:|---:|
+| Paper-COG short slip | 4.0132 | 0.5751 | 1.2006 | 7.1292 |
+| Paper-COG long slip | 4.5517 | 0.7059 | 1.4535 | 7.0350 |
+| GPS-gated short slip | 6.1936 | 0.6628 | 0.6580 | 7.1590 |
+| GPS-gated long slip | 2.5921 | 0.6491 | 0.6182 | 7.0235 |
 
-## Interpretation of Results
+## Interpretation
 
-The results match the intended methodology.
+The paper-style FLS successfully reproduces the single-input fuzzy fusion idea,
+but in the tested wheel-spin case it can still blend in corrupted KF2/odometry
+information during slip. This makes it weaker than ANN in some slip windows.
 
-ANN is not a universal replacement for KF-2. It is a learned pseudo-sensor that becomes useful when odometry becomes unreliable. Therefore, the no-slip result should not be interpreted as ANN failure. In no-slip motion, KF-2 is expected to be better because odometry is still physically meaningful.
+The proposed GPS-gated FLS is more robust in the final tests:
 
-The important result is the slip case:
+- It keeps ANN useful during GPS dropout and slip.
+- It prevents unnecessary ANN dominance when reliable GPS/KF2 is closer to the
+  reference.
+- It gives the lowest overall RMSE in both short and long routes.
 
-```text
-KF2 RMSE during slip: 2.225 m
-ANN RMSE during slip: 1.554 m
-Improvement: 30.2%
-```
-
-This shows that the ANN reduces localization error when wheel slip causes odometry-based drift.
-
-The FLS behavior is also consistent with the paper:
-
-- It gives high KF-2 weight in no-slip motion.
-- It increases ANN weight when slip is detected.
-- It can outperform both individual estimates when the ANN and KF-2 errors compensate each other.
-
-## Final Artifact Organization
-
-During experiments, many candidate models and logs can be generated. The recommended final organization is:
+Long-route overall result:
 
 ```text
-final_results/
-  final_model/
-    ann_model_final_1183_absolute_standard_31c1594f.npz
-    ann_training_dataset_final.csv
-
-  no_slip_test/
-    ann_pseudo_gps_log.csv
-    ekf_output_log.csv
-    fuzzy_localization_log.csv
-    gps_hold_log.csv
-
-  slip_test/
-    ann_pseudo_gps_log.csv
-    ekf_output_log.csv
-    fuzzy_localization_log.csv
-    gps_hold_log.csv
-
-  archive_models/
-    previous_candidate_models.npz
+Paper-COG FLS: 2.0707 m
+GPS-gated FLS: 0.7373 m
 ```
 
-The active model used by the launch files should remain at:
+This means the project both reproduces the paper-style method and adds a
+measurable innovation for GPS-dropout plus wheel-slip localization.
+
+## Generated Files
+
+Runtime logs are intentionally ignored by Git:
 
 ```text
-~/bumperbot_ws/src/ann_model.npz
+src/ann_pseudo_gps_log*.csv
+src/ekf_output_log.csv
+src/fuzzy_localization_log.csv
+src/gps_hold_log.csv
+test_results/**/*.csv
 ```
 
-## Limitations and Future Work
-
-Current limitations:
-
-- FLS weights can be tuned further, especially for long slip windows.
-- The ANN model was trained and evaluated in simulation, so real-world transfer would require additional calibration.
-- The final results depend on route similarity, sensor noise profile, and slip intensity.
-
-Possible future improvements:
-
-- Tune FLS membership thresholds with multiple slip severities.
-- Add automated evaluation scripts for RMSE tables and plots.
-- Add trajectory plots comparing KF2, ANN, FLS, and reference paths.
-- Test additional routes beyond the 3x3 square trajectory.
-- Validate the method on a physical robot.
+Only the final summarized comparison is kept in the repository.
 

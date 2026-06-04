@@ -1,3 +1,21 @@
 build/
 install/
 log/
+
+# Local editor and Python runtime artifacts
+.vscode/
+__pycache__/
+*.py[cod]
+
+# Generated ROS/localization logs
+src/ann_pseudo_gps_log*.csv
+src/ekf_output_log.csv
+src/fuzzy_localization_log.csv
+src/gps_hold_log.csv
+
+# Temporary experiment archives and raw test CSV logs
+backups/
+test_results/**/*.csv
+
+# One-off shell/output artifacts
+echo
