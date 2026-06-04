@@ -1,9 +1,0 @@
-[0.330s] Invoking command in '/home/alexnew/bumperbot_ws/build/bumperbot_localization': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/alexnew/bumperbot_ws/install/bumperbot_py_examples:/opt/ros/humble /usr/bin/cmake --build /home/alexnew/bumperbot_ws/build/bumperbot_localization -- -j4 -l4
-[1.379s] [ 50%] Built target kalman_filter
-[2.102s] [ 50%] Built target ament_cmake_python_symlink_bumperbot_localization
-[2.364s] gmake[1]: *** wait: No child processes.  Stop.
-[2.364s] gmake[1]: *** Waiting for unfinished jobs....
-[2.364s] gmake[1]: *** wait: No child processes.  Stop.
-[2.364s] gmake: *** wait: No child processes.  Stop.
-[2.364s] gmake: *** Waiting for unfinished jobs....
-[2.364s] gmake: *** wait: No child processes.  Stop.

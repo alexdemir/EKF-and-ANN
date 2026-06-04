@@ -1,1 +1,0 @@
-/home/alexnew/bumperbot_ws/build/bumperbot_msgs/rosidl_generator_c/bumperbot_msgs/srv/detail/get_transform__type_support.h

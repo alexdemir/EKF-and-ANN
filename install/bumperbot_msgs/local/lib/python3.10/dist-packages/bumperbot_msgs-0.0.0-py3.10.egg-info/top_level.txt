@@ -1,1 +1,0 @@
-/home/alexnew/bumperbot_ws/build/bumperbot_msgs/ament_cmake_python/bumperbot_msgs/bumperbot_msgs.egg-info/top_level.txt

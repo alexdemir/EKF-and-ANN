@@ -1,1 +1,0 @@
-/home/alexnew/bumperbot_ws/build/bumperbot_msgs/rosidl_generator_py/bumperbot_msgs/_bumperbot_msgs_s.ep.rosidl_typesupport_introspection_c.c

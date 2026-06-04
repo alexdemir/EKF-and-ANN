@@ -1,1 +1,0 @@
-/home/alexnew/bumperbot_ws/build/bumperbot_msgs/rosidl_generator_py/bumperbot_msgs/srv/_get_transform_s.c

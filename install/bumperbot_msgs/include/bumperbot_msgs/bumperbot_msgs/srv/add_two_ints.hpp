@@ -1,1 +1,0 @@
-/home/alexnew/bumperbot_ws/build/bumperbot_msgs/rosidl_generator_cpp/bumperbot_msgs/srv/add_two_ints.hpp
