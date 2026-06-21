@@ -1,94 +1,140 @@
-# EKF-and-ANN: GPS/INS/Odometry Localization with ANN and Fuzzy Fusion
+# GPS/INS/Odometry Localization with ANN and Fuzzy Logic Fusion
 
-This repository contains a ROS 2 Humble and Gazebo localization project for a
-differential-drive mobile robot. The work reproduces the main ANN + Kalman
-filter + fuzzy logic localization idea from the reference paper, then extends it
-with a GPS-gated fuzzy fusion strategy for wheel-slip and GPS-dropout cases.
+ROS 2 Humble and Gazebo project for mobile robot localization under GPS dropout
+and wheel-slip conditions. The project reproduces the main sensor-fusion idea
+from the paper *Information Fusion of GPS, INS and Odometer Sensors for
+Improving Localization Accuracy of Mobile Robots in Indoor and Outdoor
+Applications*, then adds a GPS-Gated FLS improvement for more robust alpha
+selection during difficult slip cases.
 
-## Goal
-
-The localization problem is tested under two difficult conditions:
-
-- GPS dropout: the robot temporarily loses live GPS correction.
-- Wheel slip: the wheel odometry reports motion while the simulated robot body
-  is stopped or moving less than expected.
-
-The system compares four estimates:
+The final system compares:
 
 - **KF2**: GPS/held-GPS + wheel odometry Kalman filter.
-- **ANN**: learned pseudo-GPS estimate from IMU and odometry features.
-- **Paper-style FLS**: single-input fuzzy logic system using the odometry/IMU
+- **ANN pseudo-GPS**: learned X-Y estimate from IMU and odometry features.
+- **Original Paper FLS**: single-input fuzzy logic fusion using IMU-vs-odometry
   velocity mismatch.
-- **Proposed GPS-gated FLS**: fuzzy fusion extended with GPS reliability,
-  ANN-vs-GPS consistency, KF2-vs-GPS consistency, and slip-state gating.
+- **GPS-Gated FLS**: modified fuzzy fusion that also checks GPS reliability and
+  ANN/KF2 consistency before choosing the fusion weight.
 
-## Method Summary
+## Project Objective
 
-### Paper-Style Reproduction
+Estimate robot position more accurately when:
 
-The reproduced fuzzy logic system follows the paper structure:
+- live GPS is temporarily unavailable,
+- wheel odometry is corrupted by slip,
+- odometry may report motion even when the robot body is stopped or moving less
+  than expected.
+
+The goal is not to replace the paper method, but to reproduce it first and then
+show a practical improvement for the most difficult cases.
+
+## Methodology Overview
+
+### Paper-Based Sensor Fusion
+
+When GPS is available, the paper-based pipeline creates a reliable reference
+position using two Kalman filter branches and a complementary filter.
+
+![Paper-based sensor fusion pipeline](presentation_assets/slide3_paper_sensor_fusion_figure.png)
+
+The reference position is used as the ANN training target.
+
+### ANN Training
+
+The ANN model is trained from non-GPS features. GPS-aided fused position is used
+only as the target during training; GPS is not an ANN input.
+
+![ANN training methodology](presentation_assets/slide4_ann_training_figure.png)
+
+Active model:
 
 ```text
-input:  |v_odom - v_imu|
-output: alpha_ann
-
-final_position = alpha_ann * ANN + (1 - alpha_ann) * KF2
+model: src/ann_model.npz
+samples: 1545
+target_mode: absolute
+activation: logsig
+input_frame: world
+input_normalization: standard
 ```
 
-For paper-comparison runs, the implementation uses:
+### Original Paper FLS vs GPS-Gated FLS
 
-- raw odometry/IMU velocity error,
-- triangular membership functions,
-- Mamdani-style center-of-gravity defuzzification,
-- no GPS gate,
-- no slip latch,
-- no severe-slip boost,
-- no adaptive velocity correction.
-
-### Proposed GPS-Gated FLS
-
-The proposed method keeps the fuzzy ANN/KF2 fusion, but adds a supervisory gate:
+Both FLS methods use the same final fusion formula:
 
 ```text
-1. Compute fuzzy alpha from odometry/IMU velocity mismatch.
-2. Check GPS-hold covariance to decide whether GPS is reliable.
-3. If GPS is reliable, compare ANN and KF2 distance to GPS.
-4. If GPS is unreliable and slip is active, allow ANN to dominate.
-5. Publish the fused ANN/KF2 position.
+final_position = alpha * ANN + (1 - alpha) * KF2
 ```
 
-This does **not** replace the final output with raw GPS. GPS is used as a
-reliability reference when it is available. During GPS dropout, the ANN remains
-important because it acts as the pseudo-GPS source when odometry/KF2 can drift.
+The difference is how `alpha` is selected.
 
-## ROS 2 Architecture
+![GPS-Gated FLS methodology](presentation_assets/slide6_gps_gated_fls_method_figure.png)
 
-```mermaid
-flowchart LR
-    GPS["GPS /gps/fix"] --> GPSH["GPS hold"]
-    GPSH --> KF2["KF2: GPS/held GPS + odometry"]
-    ODOM["Noisy odometry"] --> KF2
+Original Paper FLS mainly asks:
 
-    GPS --> KF1["KF1: GPS + IMU"]
-    IMU["IMU"] --> KF1
-    KF1 --> CF["Complementary target"]
-    KF2 --> CF
-
-    IMU --> ANNTRAIN["ANN trainer"]
-    ODOM --> ANNTRAIN
-    CF --> ANNTRAIN
-    ANNTRAIN --> MODEL["ann_model.npz"]
-
-    MODEL --> ANN["ANN pseudo-GPS"]
-    IMU --> ANN
-    ODOM --> ANN
-    GPSH --> FLS["Fuzzy localization"]
-    ANN --> FLS
-    KF2 --> FLS
-    FLS --> FINAL["Final localization"]
+```text
+Is there velocity mismatch between IMU/INS and wheel odometry?
 ```
 
-## Main Files
+GPS-Gated FLS also asks:
+
+```text
+Is GPS reliable right now?
+Which estimate is closer to reliable GPS: ANN or KF2?
+Is odometry corrupted by slip?
+```
+
+GPS is not copied directly to the final output. It is used as a reliability
+supervisor when it is available.
+
+## Results
+
+All values are RMSE in meters. Lower is better. Full numeric details are stored
+in [`test_results/fls_compare_20260604/summary.md`](test_results/fls_compare_20260604/summary.md).
+
+### Original Paper FLS
+
+![Original Paper FLS results](presentation_assets/original_paper_results_all_cases.png)
+
+### GPS-Gated FLS
+
+![GPS-Gated FLS results](presentation_assets/gps_gated_results_all_cases.png)
+
+### Final Comparison
+
+![Final FLS comparison](presentation_assets/final_comparison_table.png)
+
+Key final comparison:
+
+| Case | Original Paper FLS | GPS-Gated FLS | RMSE reduction |
+|---|---:|---:|---:|
+| Short overall | 0.93 m | 0.48 m | 47.9% |
+| Long overall | 2.07 m | 0.74 m | 64.4% |
+| Short slip | 1.20 m | 0.66 m | 45.2% |
+| Long slip | 1.45 m | 0.62 m | 57.5% |
+| Short after-slip recovery | 0.89 m | 0.92 m | -2.9% |
+| Long after-slip recovery | 2.82 m | 0.99 m | 65.0% |
+
+The strongest improvement appears in long-route and slip-related localization
+cases, especially after wheel-slip recovery.
+
+## Test Setup
+
+Final comparison route:
+
+```text
+route profile: paper_mismatch_waypoint
+GPS dropout windows: 18:8,34:14,54:12
+wheel slip window: 38-56 s
+wheel slip model: robot body stopped, wheel odometry scaled by 2.5x
+short route: 1 lap
+long route: 2 laps
+```
+
+GPS unavailable alone is not always the hardest case. KF2 can remain accurate if
+odometry is still clean. The hard case is GPS unavailable together with
+corrupted odometry.
+
+## Repository Structure
 
 ```text
 src/
@@ -97,8 +143,14 @@ src/
 
   bumperbot_controller/
     launch/controller.launch.py
+    launch/video_demo.launch.py
     bumperbot_controller/noisy_controller.py
     bumperbot_controller/scripted_trajectory.py
+
+  bumperbot_description/
+    launch/gazebo.launch.py
+    urdf/bumperbot.urdf.xacro
+    urdf/bumperbot_gazebo.xacro
 
   bumperbot_localization/
     launch/local_localization.launch.py
@@ -114,26 +166,16 @@ src/
     bumperbot_localization/gps_hold.py
     bumperbot_localization/ekf_output_logger.py
 
+presentation_assets/
+  slide3_paper_sensor_fusion_figure.png
+  slide4_ann_training_figure.png
+  slide6_gps_gated_fls_method_figure.png
+  original_paper_results_all_cases.png
+  gps_gated_results_all_cases.png
+  final_comparison_table.png
+  video_script.md
+
 test_results/fls_compare_20260604/summary.md
-```
-
-## Current ANN Model
-
-The active ANN model is stored at:
-
-```text
-src/ann_model.npz
-```
-
-Observed metadata from the final runs:
-
-```text
-samples: 1545
-target_mode: absolute
-activation: logsig
-input_frame: world
-input_normalization: standard
-sha256 prefix: 7e8705aca4b2
 ```
 
 ## Build
@@ -175,16 +217,6 @@ ros2 run bumperbot_localization fit_ann_model.py \
 
 ## Final Comparison Test
 
-The final comparison uses the scripted route:
-
-```text
-profile: paper_mismatch_waypoint
-GPS dropout windows: 18:8,34:14,54:12
-wheel slip: physical body stopped, wheel odometry scaled by 2.5x
-short route: 1 lap
-long route: 2 laps
-```
-
 Run localization:
 
 ```bash
@@ -218,53 +250,30 @@ ros2 launch bumperbot_controller controller.launch.py \
 
 Set `scripted_laps:=1` for the short route.
 
-## Results
+## Video Demo
 
-All values are RMSE in meters. The complete table is stored in
-[`test_results/fls_compare_20260604/summary.md`](test_results/fls_compare_20260604/summary.md).
+For recording the project video, one launch file starts Gazebo GUI,
+localization, logging, and the scripted dropout/slip route:
 
-| Test | KF2 | ANN | FLS | Odom |
-|---|---:|---:|---:|---:|
-| Paper-COG short overall | 2.1676 | 0.8849 | 0.9282 | 5.6566 |
-| Paper-COG long overall | 2.3172 | 2.2475 | 2.0707 | 8.7293 |
-| GPS-gated short overall | 3.3663 | 0.8989 | 0.4838 | 5.6639 |
-| GPS-gated long overall | 1.2691 | 2.1877 | 0.7373 | 8.7344 |
+```bash
+ros2 launch bumperbot_controller video_demo.launch.py scripted_laps:=1
+```
 
-Slip-window RMSE:
-
-| Test | KF2 | ANN | FLS | Odom |
-|---|---:|---:|---:|---:|
-| Paper-COG short slip | 4.0132 | 0.5751 | 1.2006 | 7.1292 |
-| Paper-COG long slip | 4.5517 | 0.7059 | 1.4535 | 7.0350 |
-| GPS-gated short slip | 6.1936 | 0.6628 | 0.6580 | 7.1590 |
-| GPS-gated long slip | 2.5921 | 0.6491 | 0.6182 | 7.0235 |
+Use `scripted_laps:=2` for the longer route. Gazebo now opens with the GUI by
+default; pass `headless:=true` only for server-only runs.
 
 ## Interpretation
 
-The paper-style FLS successfully reproduces the single-input fuzzy fusion idea,
-but in the tested wheel-spin case it can still blend in corrupted KF2/odometry
-information during slip. This makes it weaker than ANN in some slip windows.
+The Original Paper FLS reproduces the paper's single-input fuzzy fusion idea.
+However, in wheel-slip cases it may still blend corrupted KF2/odometry data.
 
-The proposed GPS-gated FLS is more robust in the final tests:
+The GPS-Gated FLS keeps the same ANN/KF2 fusion formula but improves the alpha
+decision. It is most useful when odometry becomes unreliable, especially in
+long-route slip and after-slip recovery windows.
 
-- It keeps ANN useful during GPS dropout and slip.
-- It prevents unnecessary ANN dominance when reliable GPS/KF2 is closer to the
-  reference.
-- It gives the lowest overall RMSE in both short and long routes.
+## Notes
 
-Long-route overall result:
-
-```text
-Paper-COG FLS: 2.0707 m
-GPS-gated FLS: 0.7373 m
-```
-
-This means the project both reproduces the paper-style method and adds a
-measurable innovation for GPS-dropout plus wheel-slip localization.
-
-## Generated Files
-
-Runtime logs are intentionally ignored by Git:
+Generated raw ROS logs are intentionally ignored by git:
 
 ```text
 src/ann_pseudo_gps_log*.csv
@@ -274,5 +283,5 @@ src/gps_hold_log.csv
 test_results/**/*.csv
 ```
 
-Only the final summarized comparison is kept in the repository.
-
+Only summarized results and selected presentation figures are kept in the
+repository.

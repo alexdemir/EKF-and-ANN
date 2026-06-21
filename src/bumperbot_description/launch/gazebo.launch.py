@@ -24,8 +24,8 @@ def generate_launch_description():
     )
     headless_arg = DeclareLaunchArgument(
         name="headless",
-        default_value="true",
-        description="Run Gazebo server without the GUI. Use headless:=false to open the Gazebo window."
+        default_value="false",
+        description="Open the Gazebo GUI by default. Use headless:=true for server-only runs."
     )
 
     gazebo_resource_path = SetEnvironmentVariable(
