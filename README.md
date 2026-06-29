@@ -1,4 +1,4 @@
-# GPS/INS/Odometry Localization with ANN and Fuzzy Logic Fusion
+# ANN and FLS Robot Localization
 
 ROS 2 Humble and Gazebo project for mobile robot localization under GPS dropout
 and wheel-slip conditions. The project reproduces the main sensor-fusion idea
@@ -27,6 +27,16 @@ Estimate robot position more accurately when:
 
 The goal is not to replace the paper method, but to reproduce it first and then
 show a practical improvement for the most difficult cases.
+
+## Reference Paper
+
+This project is based on the methodology from:
+
+S. Yousuf and M. B. Kadri, "Information Fusion of GPS, INS and Odometer Sensors
+for Improving Localization Accuracy of Mobile Robots in Indoor and Outdoor
+Applications," *Robotica*, 2020.
+
+DOI: https://doi.org/10.1017/S0263574720000351
 
 ## Methodology Overview
 
@@ -107,12 +117,12 @@ Key final comparison:
 
 | Case | Original Paper FLS | GPS-Gated FLS | RMSE reduction |
 |---|---:|---:|---:|
-| Short overall | 0.93 m | 0.48 m | 47.9% |
-| Long overall | 2.07 m | 0.74 m | 64.4% |
-| Short slip | 1.20 m | 0.66 m | 45.2% |
-| Long slip | 1.45 m | 0.62 m | 57.5% |
-| Short after-slip recovery | 0.89 m | 0.92 m | -2.9% |
-| Long after-slip recovery | 2.82 m | 0.99 m | 65.0% |
+| Whole route, long route | 2.07 m | 0.74 m | 64.4% |
+| GPS unavailable only, case 1 | 0.56 m | 0.17 m | 69.6% |
+| GPS unavailable only, case 2 | 0.56 m | 0.33 m | 41.1% |
+| GPS unavailable + odometry error | 1.60 m | 0.38 m | 76.3% |
+| Wheel slip odometry error | 1.45 m | 0.62 m | 57.2% |
+| After slip recovery | 2.82 m | 0.99 m | 64.9% |
 
 The strongest improvement appears in long-route and slip-related localization
 cases, especially after wheel-slip recovery.
